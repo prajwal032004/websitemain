@@ -78,10 +78,7 @@ export function useFramePreloader(urls: string[], options: Options = {}): Preloa
         if (cancelled) return resolve();
 
         const img = new Image();
-        // Decoding hint tells the browser we don't need it on the main thread.
         img.decoding = 'async';
-        // Hint the browser to keep priorities reasonable.
-        // @ts-expect-error — fetchPriority is valid HTML but not yet in all TS dom libs
         img.fetchPriority = index < 12 ? 'high' : 'low';
 
         const finish = (ok: boolean) => {
