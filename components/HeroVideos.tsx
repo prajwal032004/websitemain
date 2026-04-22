@@ -1,273 +1,469 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGsap } from '@/hooks/useGsap';
 import { useLoaderComplete } from '@/hooks/useLoaderComplete';
-import { cn } from '@/utils/cn';
+
+/* ─────────────────────────────────────────────
+   HeroVideos — responsive full-bleed video hero
+
+   Desktop (≥768px) → plays /videos/hero-desktop.mp4
+   Mobile  (<768px) → plays /videos/hero-mobile.mp4
+
+   Required assets:
+     /videos/hero-desktop.mp4   — landscape reel
+     /videos/hero-mobile.mp4    — portrait / square reel
+───────────────────────────────────────────── */
+
+const DESKTOP_BP = 768;
+
+/** SSR-safe hook — returns true once window confirms ≥768 px */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${DESKTOP_BP}px)`);
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  return isDesktop;
+}
 
 export default function HeroVideos() {
-  const active = useLoaderComplete();
+  const active     = useLoaderComplete();
   const sectionRef = useRef<HTMLElement | null>(null);
-  const leftVidRef = useRef<HTMLVideoElement | null>(null);
-  const rightVidRef = useRef<HTMLVideoElement | null>(null);
-  const [leftFailed, setLeftFailed] = useState(false);
-  const [rightFailed, setRightFailed] = useState(false);
+  const desktopRef = useRef<HTMLVideoElement | null>(null);
+  const mobileRef  = useRef<HTMLVideoElement | null>(null);
+
+  const isDesktop = useIsDesktop();
+
+  // Play the active video, pause + reset the inactive one
+  useEffect(() => {
+    const activeVid  = isDesktop ? desktopRef.current : mobileRef.current;
+    const passiveVid = isDesktop ? mobileRef.current  : desktopRef.current;
+
+    if (passiveVid) { passiveVid.pause(); passiveVid.currentTime = 0; }
+    if (activeVid)  { activeVid.play().catch(() => {}); }
+  }, [isDesktop]);
 
   useGsap(
     () => {
       if (!active || !sectionRef.current) return;
       gsap.registerPlugin(ScrollTrigger);
 
-      // Try to play the videos; autoplay can fail on iOS if the user hasn't interacted,
-      // but `muted + playsInline` is our insurance policy.
-      const tryPlay = async (v: HTMLVideoElement | null, onFail: () => void) => {
-        if (!v) return;
-        try {
-          await v.play();
-        } catch {
-          onFail();
-        }
-      };
-      void tryPlay(leftVidRef.current, () => setLeftFailed(true));
-      void tryPlay(rightVidRef.current, () => setRightFailed(true));
-
-      // Cinematic intro — panels slide in from the edges behind the headline.
+      // ── Intro timeline ──────────────────────────────────────────────
       const intro = gsap.timeline({
-        defaults: { ease: 'expo.out', duration: 1.4 },
+        defaults: { ease: 'expo.out', duration: 1.5 },
         delay: 0.1,
       });
 
       intro
-        .from('[data-hero-panel="left"]', { xPercent: -18, opacity: 0 }, 0)
-        .from('[data-hero-panel="right"]', { xPercent: 18, opacity: 0 }, 0)
-        .from('[data-hero-line]', { yPercent: 110, opacity: 0, stagger: 0.08, duration: 1.1 }, 0.15)
-        .from(
-          '[data-hero-meta]',
-          { y: 20, opacity: 0, stagger: 0.08, duration: 0.9, ease: 'power3.out' },
-          0.55,
-        );
+        .from('[data-hv-video]',        { scale: 1.08, opacity: 0, duration: 1.8 }, 0)
+        .from('[data-hv-overlay]',      { opacity: 0,  duration: 1.2 }, 0.2)
+        .from('[data-hv-eyebrow]',      { y: 16, opacity: 0, stagger: 0.1, duration: 1 }, 0.5)
+        .from('[data-hv-line]',         { yPercent: 115, opacity: 0, stagger: 0.1, duration: 1.1 }, 0.65)
+        .from('[data-hv-sub]',          { y: 18, opacity: 0, duration: 0.9, ease: 'power3.out' }, 1.0)
+        .from('[data-hv-cta]',          { y: 18, opacity: 0, duration: 0.9, ease: 'power3.out' }, 1.1)
+        .from('[data-hv-badge]',        { scale: 0.85, opacity: 0, duration: 1, ease: 'back.out(1.6)' }, 1.1)
+        .from('[data-hv-corners] span', { opacity: 0, stagger: 0.07, duration: 0.5 }, 0.4);
 
-      // Scroll parallax — panels drift apart and scale down slightly while scrolling out.
-      const parallax = gsap.timeline({
+      // ── Scroll parallax ─────────────────────────────────────────────
+      gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top top',
-          end: 'bottom top',
-          scrub: 0.6,
+          end:   'bottom top',
+          scrub: 0.7,
         },
-      });
-
-      parallax
-        .to('[data-hero-panel="left"]', { xPercent: -6, scale: 0.95, ease: 'none' }, 0)
-        .to('[data-hero-panel="right"]', { xPercent: 6, scale: 0.95, ease: 'none' }, 0)
-        .to('[data-hero-headline]', { y: -80, opacity: 0.7, ease: 'none' }, 0);
+      })
+        .to('[data-hv-video]',    { scale: 1.06, ease: 'none' }, 0)
+        .to('[data-hv-headline]', { y: -90, opacity: 0.6, ease: 'none' }, 0);
     },
     [active],
     sectionRef,
   );
 
   return (
-    <section
-      ref={sectionRef}
-      id="top"
-      className="relative isolate min-h-[100svh] overflow-hidden bg-ink-950 pt-24 md:pt-32"
-    >
-      {/* Ambient background */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* ── Reset & design tokens ──────────────────── */
+        #hv-section *,
+        #hv-section *::before,
+        #hv-section *::after { box-sizing: border-box; }
+
+        #hv-section {
+          --hv-bg:          #080706;
+          --hv-fg:          #f2e9d4;
+          --hv-fg-muted:    rgba(242,233,212,0.55);
+          --hv-accent:      #e08c3c;
+          --hv-accent-2:    #c96d20;
+          --hv-line:        rgba(242,233,212,0.18);
+          --hv-line-strong: rgba(242,233,212,0.28);
+          --hv-radius:      6px;
+          --hv-ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+
+          position: relative;
+          isolation: isolate;
+          width: 100%;
+          min-height: 100svh;
+          min-height: 100dvh;
+          overflow: hidden;
+          background: var(--hv-bg);
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* ── Video wrapper ──────────────────────────── */
+        #hv-video-wrap {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        /*
+         * Both videos are stacked in the same slot via position:absolute.
+         * CSS media queries show one and hide the other — no JS flash.
+         * The JS useEffect also plays/pauses to save bandwidth.
+         */
+        #hv-video-wrap video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center center;
+          display: block;
+          will-change: transform;
+          opacity: 0;
+          transition: opacity 0.5s ease;
+          pointer-events: none;
+        }
+
+        /* Desktop video — visible at ≥768px */
+        @media (min-width: 768px) {
+          #hv-video-desktop { opacity: 1; }
+          #hv-video-mobile  { opacity: 0; }
+        }
+
+        /* Mobile video — visible below 768px */
+        @media (max-width: 767px) {
+          #hv-video-mobile  { opacity: 1; object-position: center top; }
+          #hv-video-desktop { opacity: 0; }
+        }
+
+        /* ── Overlay gradients ──────────────────────── */
+        #hv-overlay {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
           background:
-            'radial-gradient(80% 60% at 50% 0%, rgba(226,137,58,0.14) 0%, transparent 60%), radial-gradient(100% 80% at 50% 100%, rgba(10,8,7,1) 40%, rgba(142,74,20,0.08) 100%)',
-        }}
-      />
+            linear-gradient(to bottom,
+              rgba(8,7,6,0.68) 0%,
+              rgba(8,7,6,0.10) 28%,
+              transparent 48%
+            ),
+            linear-gradient(to top,
+              rgba(8,7,6,0.92) 0%,
+              rgba(8,7,6,0.55) 26%,
+              transparent 52%
+            ),
+            radial-gradient(ellipse 90% 60% at 50% 110%,
+              rgba(180,80,10,0.22) 0%,
+              transparent 70%
+            );
+        }
 
-      {/* Videos */}
-      <div className="container-fluid relative z-10 grid grid-cols-2 gap-3 md:gap-6">
-        <VideoPanel
-          side="left"
-          src="/videos/hero-1.mp4"
-          poster="/videos/hero-1-poster.jpg"
-          videoRef={leftVidRef}
-          failed={leftFailed}
-          onFail={() => setLeftFailed(true)}
-          label="N 29°58′"
-          sublabel="Dune / approach"
-        />
-        <VideoPanel
-          side="right"
-          src="/videos/hero-2.mp4"
-          poster="/videos/hero-2-poster.jpg"
-          videoRef={rightVidRef}
-          failed={rightFailed}
-          onFail={() => setRightFailed(true)}
-          label="W 112°07′"
-          sublabel="Aperture / exit"
-        />
-      </div>
+        /* ── Decorative corner ticks ────────────────── */
+        #hv-corners {
+          position: absolute;
+          inset: 20px;
+          pointer-events: none;
+          z-index: 4;
+        }
+        @media (min-width: 768px) { #hv-corners { inset: 28px; } }
 
-      {/* Headline over the panels */}
-      <div
-        data-hero-headline
-        className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-[100svh] flex-col justify-between pt-32 md:pt-40"
-      >
-        <div className="container-fluid">
-          <div className="flex items-end justify-between gap-6">
-            <p data-hero-meta className="eyebrow">
-              MMXXVI / Vol. 07
-            </p>
-            <p data-hero-meta className="eyebrow hidden md:block">
-              24 / 151 — Index
+        #hv-corners span { position: absolute; display: block; }
+
+        #hv-corners span:nth-child(1) { top: 0; left: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(2) { top: 0; left: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(3) { top: 0; right: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(4) { top: 0; right: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(5) { bottom: 0; left: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(6) { bottom: 0; left: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(7) { bottom: 0; right: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
+        #hv-corners span:nth-child(8) { bottom: 0; right: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
+
+        /* ── Content layer ──────────────────────────── */
+        #hv-content {
+          position: relative;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 100svh;
+          min-height: 100dvh;
+          padding: 0 20px;
+        }
+        @media (min-width: 640px)  { #hv-content { padding: 0 32px; } }
+        @media (min-width: 768px)  { #hv-content { padding: 0 48px; } }
+        @media (min-width: 1024px) { #hv-content { padding: 0 64px; } }
+        @media (min-width: 1440px) { #hv-content { padding: 0 80px; } }
+
+        /* ── Top bar ────────────────────────────────── */
+        #hv-topbar {
+          padding-top: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        @media (min-width: 768px) { #hv-topbar { padding-top: 36px; } }
+
+        .hv-eyebrow {
+          font-family: ui-monospace, 'SF Mono', 'Fira Code', monospace;
+          font-size: 10px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--hv-fg-muted);
+          white-space: nowrap;
+        }
+        @media (min-width: 768px) { .hv-eyebrow { font-size: 11px; } }
+
+        #hv-wordmark {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 15px;
+          font-style: italic;
+          letter-spacing: 0.06em;
+          color: var(--hv-fg);
+        }
+        @media (min-width: 768px) { #hv-wordmark { font-size: 17px; } }
+
+        /* ── Headline ───────────────────────────────── */
+        #hv-headline { padding: 0; }
+
+        #hv-headline h1 {
+          margin: 0;
+          font-family: Georgia, 'Times New Roman', serif;
+          font-weight: 400;
+          color: var(--hv-fg);
+          font-size: clamp(52px, 11vw, 96px);
+          line-height: 0.90;
+          letter-spacing: -0.025em;
+        }
+        @media (min-width: 768px) {
+          #hv-headline h1 { font-size: clamp(64px, 9.5vw, 112px); }
+        }
+
+        .hv-line-wrap { overflow: hidden; display: block; }
+        .hv-line-wrap + .hv-line-wrap { margin-top: 0.04em; }
+
+        .hv-line-indent { padding-left: 12vw; }
+        @media (min-width: 768px) { .hv-line-indent { padding-left: 18vw; } }
+
+        .hv-accent-word { color: var(--hv-accent); font-style: italic; }
+
+        /* ── Sub-copy ────────────────────────────────── */
+        #hv-sub {
+          margin-top: 28px;
+          max-width: 480px;
+          font-size: 14px;
+          line-height: 1.65;
+          color: rgba(242,233,212,0.70);
+          font-family: ui-sans-serif, system-ui, sans-serif;
+        }
+        @media (min-width: 768px) { #hv-sub { font-size: 15px; margin-top: 32px; } }
+
+        /* ── Bottom bar ─────────────────────────────── */
+        #hv-bottom {
+          padding-bottom: 32px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 20px;
+        }
+        @media (min-width: 768px) { #hv-bottom { padding-bottom: 44px; } }
+
+        #hv-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 14px;
+          text-decoration: none;
+          color: var(--hv-fg);
+          font-family: ui-monospace, 'SF Mono', monospace;
+          font-size: 10px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+        }
+        @media (min-width: 768px) { #hv-cta { font-size: 11px; } }
+
+        #hv-cta:hover { color: var(--hv-accent); }
+        #hv-cta:hover #hv-cta-arrow { transform: translateX(4px); }
+
+        #hv-cta-line {
+          width: 40px; height: 1px;
+          background: var(--hv-line-strong);
+          position: relative; overflow: hidden;
+        }
+        @media (min-width: 768px) { #hv-cta-line { width: 56px; } }
+
+        #hv-cta-line::after {
+          content: '';
+          position: absolute;
+          top: 0; left: -100%;
+          width: 50%; height: 100%;
+          background: var(--hv-accent);
+          animation: hv-shimmer 2.4s linear infinite;
+        }
+
+        #hv-cta-arrow {
+          display: inline-block;
+          transition: transform 0.3s var(--hv-ease-out);
+          font-style: normal;
+        }
+
+        /* badge — desktop only */
+        #hv-badge {
+          display: none;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+        }
+        @media (min-width: 768px) { #hv-badge { display: flex; } }
+
+        #hv-badge-ring {
+          width: 64px; height: 64px;
+          border-radius: 50%;
+          border: 1px solid var(--hv-line-strong);
+          display: flex; align-items: center; justify-content: center;
+          position: relative;
+        }
+        #hv-badge-ring::before {
+          content: '';
+          position: absolute; inset: 6px;
+          border-radius: 50%;
+          border: 1px solid var(--hv-line);
+        }
+        #hv-badge-year {
+          font-family: Georgia, serif;
+          font-size: 13px;
+          color: var(--hv-fg-muted);
+          font-style: italic;
+        }
+
+        /* progress bar */
+        #hv-progress {
+          position: absolute;
+          bottom: 0; left: 0;
+          width: 30%; height: 2px;
+          background: linear-gradient(to right, var(--hv-accent-2), var(--hv-accent));
+          animation: hv-progress 12s linear infinite;
+          transform-origin: left;
+        }
+
+        /* ── Keyframes ──────────────────────────────── */
+        @keyframes hv-shimmer {
+          0%   { left: -100%; }
+          100% { left: 200%; }
+        }
+        @keyframes hv-progress {
+          0%   { width: 0%; }
+          100% { width: 100%; }
+        }
+
+        /* ── Reduced motion ─────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          #hv-cta-line::after,
+          #hv-progress { animation: none !important; }
+        }
+       `}} />
+
+      <section ref={sectionRef} id="hv-section" data-section="hero">
+
+        {/* ── Two videos stacked — CSS shows one, JS plays one ── */}
+        <div id="hv-video-wrap" data-hv-video>
+          <video
+            id="hv-video-desktop"
+            ref={desktopRef}
+            src="/videos/desktop.mp4"
+            muted
+            playsInline
+            autoPlay
+            loop
+            preload="metadata"
+            aria-hidden
+          />
+          <video
+            id="hv-video-mobile"
+            ref={mobileRef}
+            src="/videos/mobile.mp4"
+            muted
+            playsInline
+            autoPlay
+            loop
+            preload="metadata"
+            aria-hidden
+          />
+        </div>
+
+        <div id="hv-overlay" aria-hidden data-hv-overlay />
+
+        <div id="hv-corners" aria-hidden data-hv-corners>
+          {Array.from({ length: 8 }).map((_, i) => <span key={i} />)}
+        </div>
+
+        <div id="hv-progress" aria-hidden />
+
+        <div id="hv-content" data-hv-headline>
+
+          <div id="hv-topbar" />
+
+          <div id="hv-headline">
+            <h1>
+              <span className="hv-line-wrap">
+                <span data-hv-line className="block">
+                  Private{' '}
+                  <em className="hv-accent-word">Journeys</em>
+                </span>
+              </span>
+              <span className="hv-line-wrap">
+                <span data-hv-line className="hv-line-indent block">
+                  beyond{' '}
+                  <em className="hv-accent-word">Limits</em>
+                </span>
+              </span>
+            </h1>
+
+            <p id="hv-sub" data-hv-sub>
+              Meridian crafts bespoke voyages for twelve passengers at a time —
+              from frozen Patagonian fjords to the last light over the
+              Rub&rsquo; al Khali. No brochure. No itinerary. Only the horizon
+              you choose.
             </p>
           </div>
 
-          <h1 className="mt-8 font-display text-[15vw] leading-[0.88] tracking-ultratight text-bone-100 md:mt-10 md:text-[13vw]">
-            <span className="block overflow-hidden">
-              <span data-hero-line className="block">
-                Private <em className="italic text-bone-200"> Journeys</em>
-              </span>
-            </span>
-            <span className="block overflow-hidden">
-              <span data-hero-line className="block pl-[18vw] md:pl-[24vw]">
-                beyond <span className="italic text-ember-400">
-                  Limits</span>
-              </span>
-            </span>
-          </h1>
-        </div>
-
-        <div className="container-fluid pb-10 md:pb-14">
-          <div className="flex items-end justify-between gap-8">
-            <p
-              data-hero-meta
-              className="max-w-sm text-sm leading-relaxed text-bone-200/80 md:text-base"
-            >
-              Meridian crafts bespoke voyages for twelve passengers at a time — from a
-              frozen Patagonian fjord to the last light over the Rub&rsquo; al Khali.
-              No brochure. No itinerary. Only the horizon you choose.
-            </p>
-
-            <a
-              data-hero-meta
-              href="#manifesto"
-              className="group pointer-events-auto hidden items-center gap-3 text-sm text-bone-100 md:flex"
-              aria-label="Scroll to manifesto"
-            >
-              <span className="font-mono text-[11px] uppercase tracking-superwide">
-                Continue
-              </span>
-              <span
-                aria-hidden
-                className="relative block h-8 w-px overflow-hidden bg-bone-100/20"
-              >
-                <span className="absolute inset-x-0 top-0 block h-3 w-px animate-[shimmer_2s_linear_infinite] bg-ember-400" />
-              </span>
+          <div id="hv-bottom">
+            <a href="#manifesto" id="hv-cta" data-hv-cta aria-label="Scroll to manifesto">
+              <span id="hv-cta-line" />
+              <span>Continue</span>
+              <i id="hv-cta-arrow" aria-hidden>→</i>
             </a>
+
+            <div id="hv-badge" data-hv-badge aria-hidden>
+              <div id="hv-badge-ring">
+                <span id="hv-badge-year">&#x2715;</span>
+              </div>
+            </div>
           </div>
+
         </div>
-      </div>
-    </section>
-  );
-}
-
-interface VideoPanelProps {
-  src: string;
-  poster: string;
-  side: 'left' | 'right';
-  label: string;
-  sublabel: string;
-  videoRef: React.RefObject<HTMLVideoElement>;
-  failed: boolean;
-  onFail: () => void;
-}
-
-function VideoPanel({
-  src,
-  poster,
-  side,
-  label,
-  sublabel,
-  videoRef,
-  failed,
-  onFail,
-}: VideoPanelProps) {
-  return (
-    <div
-      data-hero-panel={side}
-      className={cn(
-        'relative aspect-[4/5] overflow-hidden rounded-sm bg-ink-800 ring-1 ring-[var(--line-strong)]',
-        'md:aspect-[3/4]',
-      )}
-    >
-      {!failed ? (
-        <video
-          ref={videoRef}
-          src={src}
-          poster={poster}
-          className="h-full w-full scale-[1.03] object-cover"
-          muted
-          playsInline
-          autoPlay
-          loop
-          preload="metadata"
-          onError={onFail}
-          aria-hidden
-        />
-      ) : (
-        // Graceful fallback: poster only. Still feels intentional.
-        <img
-          src={poster}
-          alt=""
-          className="h-full w-full scale-[1.03] object-cover"
-          aria-hidden
-        />
-      )}
-
-      {/* Readability gradient */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-t from-ink-950/80 via-ink-950/10 to-ink-950/40"
-      />
-
-      {/* Panel labels */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-4 pb-4 md:px-6 md:pb-6">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-superwide text-bone-100/80">
-            {label}
-          </p>
-          <p className="mt-1 font-display text-sm italic text-bone-100/90">
-            {sublabel}
-          </p>
-        </div>
-        <div className="hidden font-mono text-[10px] uppercase tracking-superwide text-bone-100/60 md:block">
-          {side === 'left' ? '01 / 02' : '02 / 02'}
-        </div>
-      </div>
-
-      {/* Corner ticks — editorial detail */}
-      <CornerTick className="left-2 top-2" />
-      <CornerTick className="right-2 top-2" rotate={90} />
-    </div>
-  );
-}
-
-function CornerTick({
-  className,
-  rotate = 0,
-}: {
-  className?: string;
-  rotate?: number;
-}) {
-  return (
-    <div
-      aria-hidden
-      className={cn('absolute h-4 w-4 md:h-5 md:w-5', className)}
-      style={{ transform: `rotate(${rotate}deg)` }}
-    >
-      <span className="absolute left-0 top-0 h-px w-full bg-bone-100/60" />
-      <span className="absolute left-0 top-0 h-full w-px bg-bone-100/60" />
-    </div>
+      </section>
+    </>
   );
 }
