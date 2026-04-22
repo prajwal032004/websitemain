@@ -39,7 +39,7 @@ export default function TeamGrid() {
           <div>
             <p className="eyebrow mb-4">§ Crew</p>
             <h2 className="max-w-[18ch] font-display text-5xl italic leading-[0.95] text-balance md:text-6xl">
-              Eleven people. <span className="text-ember-400">One phone number.</span>
+              Three people. <span className="text-ember-400">One phone number.</span>
             </h2>
           </div>
         </div>
