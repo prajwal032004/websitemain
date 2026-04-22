@@ -6,12 +6,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGsap } from '@/hooks/useGsap';
 
 const TEAM = [
-  { name: 'Elena Marceau', role: 'Founder & Captain', quote: 'We do not sell itineraries. We sell arrival.' },
-  { name: 'Joaquín Serra', role: 'Director of Operations', quote: 'A good plan is one you can tear up on the tarmac.' },
-  { name: 'Amara Okafor', role: 'Chief Concierge', quote: 'No request is unusual by the second time it is made.' },
-  { name: 'Dorian Velasco', role: 'Lead Pilot', quote: 'The runway is the passenger’s welcome mat.' },
-  { name: 'Sabine Rauch', role: 'Head of Logistics', quote: 'Customs is a rhythm, not a wall.' },
-  { name: 'Tai Nakamura', role: 'Safety & Compliance', quote: 'Discretion begins with the maintenance log.' },
+  { name: 'Dhiraj Kishore', role: 'Founder & Captain', quote: 'We do not sell itineraries. We sell arrival.' },
+  { name: 'Deepan', role: 'Director of Operations', quote: 'A good plan is one you can tear up on the tarmac.' },
+  { name: 'Pruthvij Prabhu', role: 'Chief Concierge', quote: 'No request is unusual by the second time it is made.' },
 ];
 
 export default function TeamGrid() {
