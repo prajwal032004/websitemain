@@ -52,7 +52,7 @@ export default function PageShell() {
       <Navbar />
 
       <main className="relative">
-        <HeroVideos active={loaderExited} />
+        <HeroVideos />
         <FrameScrollCanvas
           onProgress={handleProgress}
           onReady={handleReady}

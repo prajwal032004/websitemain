@@ -126,12 +126,13 @@ export default function HeroVideos() {
           <h1 className="mt-8 font-display text-[15vw] leading-[0.88] tracking-ultratight text-bone-100 md:mt-10 md:text-[13vw]">
             <span className="block overflow-hidden">
               <span data-hero-line className="block">
-                Private <em className="italic text-bone-200">expeditions</em>
+                Private <em className="italic text-bone-200"> Journeys</em>
               </span>
             </span>
             <span className="block overflow-hidden">
               <span data-hero-line className="block pl-[18vw] md:pl-[24vw]">
-                beyond the <span className="italic text-ember-400">known</span>
+                beyond <span className="italic text-ember-400">
+                  Limits</span>
               </span>
             </span>
           </h1>
