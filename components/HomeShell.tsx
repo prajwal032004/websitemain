@@ -20,8 +20,8 @@ const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 export default function HomeShell() {
   return (
     <main className="relative">
-      <HeroVideos />
       <FrameScrollCanvas />
+      <HeroVideos />
       <IntroSection />
       <StatsSection />
       <FeaturesSection />

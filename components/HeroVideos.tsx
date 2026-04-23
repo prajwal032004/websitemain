@@ -1,469 +1,483 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGsap } from '@/hooks/useGsap';
-import { useLoaderComplete } from '@/hooks/useLoaderComplete';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { cn } from '@/utils/cn';
 
-/* ─────────────────────────────────────────────
-   HeroVideos — responsive full-bleed video hero
+/** Video source pairs. Swap filenames here if you rename the files in /public/videos. */
+const DESKTOP_SRCS = ['/videos/desktop.mp4', '/videos/desktop.mp4'] as const;
+const MOBILE_SRCS = ['/videos/mobile.mp4', '/videos/mobile.mp4'] as const;
 
-   Desktop (≥768px) → plays /videos/hero-desktop.mp4
-   Mobile  (<768px) → plays /videos/hero-mobile.mp4
-
-   Required assets:
-     /videos/hero-desktop.mp4   — landscape reel
-     /videos/hero-mobile.mp4    — portrait / square reel
-───────────────────────────────────────────── */
-
-const DESKTOP_BP = 768;
-
-/** SSR-safe hook — returns true once window confirms ≥768 px */
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia(`(min-width: ${DESKTOP_BP}px)`);
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  return isDesktop;
-}
-
+/**
+ * HeroVideos — two-video diptych.
+ *
+ * Entrance animation is triggered by ScrollTrigger (when the section enters
+ * the viewport), not by `useLoaderComplete` — because this section now lives
+ * BELOW the FrameScrollCanvas, so by the time the user reaches it the loader
+ * has long since dismissed. We want the choreography to fire when it becomes
+ * visible, not on page load.
+ *
+ * Videos also lazy-start via IntersectionObserver to avoid burning bandwidth
+ * on an off-screen autoplay.
+ */
 export default function HeroVideos() {
-  const active     = useLoaderComplete();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+
   const sectionRef = useRef<HTMLElement | null>(null);
-  const desktopRef = useRef<HTMLVideoElement | null>(null);
-  const mobileRef  = useRef<HTMLVideoElement | null>(null);
 
-  const isDesktop = useIsDesktop();
+  const sources = isDesktop === false ? MOBILE_SRCS : DESKTOP_SRCS;
 
-  // Play the active video, pause + reset the inactive one
+  const [audioOwnerIndex, setAudioOwnerIndex] = useState<number | null>(null);
+
   useEffect(() => {
-    const activeVid  = isDesktop ? desktopRef.current : mobileRef.current;
-    const passiveVid = isDesktop ? mobileRef.current  : desktopRef.current;
+    setAudioOwnerIndex(null);
+  }, [sources]);
 
-    if (passiveVid) { passiveVid.pause(); passiveVid.currentTime = 0; }
-    if (activeVid)  { activeVid.play().catch(() => {}); }
-  }, [isDesktop]);
-
+  // Entrance + scroll parallax — both scroll-driven so they behave correctly
+  // when HeroVideos is the *second* section on the page.
   useGsap(
     () => {
-      if (!active || !sectionRef.current) return;
+      if (!sectionRef.current) return;
       gsap.registerPlugin(ScrollTrigger);
 
-      // ── Intro timeline ──────────────────────────────────────────────
-      const intro = gsap.timeline({
-        defaults: { ease: 'expo.out', duration: 1.5 },
-        delay: 0.1,
+      const tl = gsap.timeline({
+        defaults: { ease: 'expo.out' },
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%', // fires when top of section is 80% down the viewport
+          once: true,       // play once; afterwards items remain visible
+        },
       });
 
-      intro
-        .from('[data-hv-video]',        { scale: 1.08, opacity: 0, duration: 1.8 }, 0)
-        .from('[data-hv-overlay]',      { opacity: 0,  duration: 1.2 }, 0.2)
-        .from('[data-hv-eyebrow]',      { y: 16, opacity: 0, stagger: 0.1, duration: 1 }, 0.5)
-        .from('[data-hv-line]',         { yPercent: 115, opacity: 0, stagger: 0.1, duration: 1.1 }, 0.65)
-        .from('[data-hv-sub]',          { y: 18, opacity: 0, duration: 0.9, ease: 'power3.out' }, 1.0)
-        .from('[data-hv-cta]',          { y: 18, opacity: 0, duration: 0.9, ease: 'power3.out' }, 1.1)
-        .from('[data-hv-badge]',        { scale: 0.85, opacity: 0, duration: 1, ease: 'back.out(1.6)' }, 1.1)
-        .from('[data-hv-corners] span', { opacity: 0, stagger: 0.07, duration: 0.5 }, 0.4);
+      tl.from('[data-hero-tile]', {
+        y: 56,
+        scale: 0.94,
+        opacity: 0,
+        duration: 1.3,
+        stagger: 0.14,
+      })
+        .from(
+          '[data-hero-meta]',
+          { y: 14, opacity: 0, duration: 0.8, stagger: 0.06, ease: 'power3.out' },
+          0.35,
+        )
+        .from(
+          '[data-hero-glass]',
+          { y: 20, opacity: 0, duration: 0.9, stagger: 0.06, ease: 'power3.out' },
+          0.55,
+        );
 
-      // ── Scroll parallax ─────────────────────────────────────────────
-      gsap.timeline({
+      // Subtle scroll-out parallax — tiles lift and shrink a touch when leaving view.
+      gsap.to('[data-hero-tile]', {
+        y: -36,
+        scale: 0.97,
+        ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top top',
-          end:   'bottom top',
-          scrub: 0.7,
+          end: 'bottom top',
+          scrub: 0.6,
         },
-      })
-        .to('[data-hv-video]',    { scale: 1.06, ease: 'none' }, 0)
-        .to('[data-hv-headline]', { y: -90, opacity: 0.6, ease: 'none' }, 0);
+      });
     },
-    [active],
+    [],
     sectionRef,
   );
 
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: `
-        /* ── Reset & design tokens ──────────────────── */
-        #hv-section *,
-        #hv-section *::before,
-        #hv-section *::after { box-sizing: border-box; }
-
-        #hv-section {
-          --hv-bg:          #080706;
-          --hv-fg:          #f2e9d4;
-          --hv-fg-muted:    rgba(242,233,212,0.55);
-          --hv-accent:      #e08c3c;
-          --hv-accent-2:    #c96d20;
-          --hv-line:        rgba(242,233,212,0.18);
-          --hv-line-strong: rgba(242,233,212,0.28);
-          --hv-radius:      6px;
-          --hv-ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
-
-          position: relative;
-          isolation: isolate;
-          width: 100%;
-          min-height: 100svh;
-          min-height: 100dvh;
-          overflow: hidden;
-          background: var(--hv-bg);
-          display: flex;
-          flex-direction: column;
-        }
-
-        /* ── Video wrapper ──────────────────────────── */
-        #hv-video-wrap {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          overflow: hidden;
-        }
-
-        /*
-         * Both videos are stacked in the same slot via position:absolute.
-         * CSS media queries show one and hide the other — no JS flash.
-         * The JS useEffect also plays/pauses to save bandwidth.
-         */
-        #hv-video-wrap video {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center center;
-          display: block;
-          will-change: transform;
-          opacity: 0;
-          transition: opacity 0.5s ease;
-          pointer-events: none;
-        }
-
-        /* Desktop video — visible at ≥768px */
-        @media (min-width: 768px) {
-          #hv-video-desktop { opacity: 1; }
-          #hv-video-mobile  { opacity: 0; }
-        }
-
-        /* Mobile video — visible below 768px */
-        @media (max-width: 767px) {
-          #hv-video-mobile  { opacity: 1; object-position: center top; }
-          #hv-video-desktop { opacity: 0; }
-        }
-
-        /* ── Overlay gradients ──────────────────────── */
-        #hv-overlay {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
+    <section
+      ref={sectionRef}
+      id="hero-videos"
+      className={cn(
+        'relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-ink-950',
+        'pt-16 sm:pt-20 md:pt-24',
+        'pb-6 md:pb-8',
+      )}
+    >
+      {/* Warm glow + grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
           background:
-            linear-gradient(to bottom,
-              rgba(8,7,6,0.68) 0%,
-              rgba(8,7,6,0.10) 28%,
-              transparent 48%
-            ),
-            linear-gradient(to top,
-              rgba(8,7,6,0.92) 0%,
-              rgba(8,7,6,0.55) 26%,
-              transparent 52%
-            ),
-            radial-gradient(ellipse 90% 60% at 50% 110%,
-              rgba(180,80,10,0.22) 0%,
-              transparent 70%
-            );
-        }
+            'radial-gradient(70% 45% at 50% 0%, rgba(226,137,58,0.18) 0%, transparent 60%), radial-gradient(90% 70% at 50% 100%, rgba(142,74,20,0.10) 0%, transparent 70%)',
+        }}
+      />
+      <div aria-hidden className="grain pointer-events-none absolute inset-0" />
 
-        /* ── Decorative corner ticks ────────────────── */
-        #hv-corners {
-          position: absolute;
-          inset: 20px;
-          pointer-events: none;
-          z-index: 4;
-        }
-        @media (min-width: 768px) { #hv-corners { inset: 28px; } }
+      {/* ─── Top meta ──────────────────────────────────────────── */}
+      <div className="container-fluid relative z-10 flex items-center justify-between gap-4">
+        <p data-hero-meta className="eyebrow">
+          § Our story — diptych
+        </p>
+        <p data-hero-meta className="eyebrow hidden sm:block">
+          Press a speaker to listen — one at a time.
+        </p>
+      </div>
 
-        #hv-corners span { position: absolute; display: block; }
+      {/* ─── Center stage: two tiles ───────────────────────────── */}
+      <div className="container-fluid relative z-10 flex flex-1 items-center justify-center py-4 md:py-10">
+        <div
+          className={cn(
+            'grid w-full gap-3 sm:gap-4 md:gap-5',
+            'grid-cols-1 md:grid-cols-2',
+            'mx-auto max-w-[1440px]',
+          )}
+        >
+          {sources.map((src, i) => (
+            <VideoTile
+              key={`${src}-${i}`}
+              src={src}
+              index={i}
+              primary={i === 0}
+              isAudioOwner={audioOwnerIndex === i}
+              onRequestAudio={(claim) =>
+                setAudioOwnerIndex(claim ? i : (owner) => (owner === i ? null : owner))
+              }
+            />
+          ))}
+        </div>
+      </div>
 
-        #hv-corners span:nth-child(1) { top: 0; left: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(2) { top: 0; left: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(3) { top: 0; right: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(4) { top: 0; right: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(5) { bottom: 0; left: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(6) { bottom: 0; left: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(7) { bottom: 0; right: 0; width: 22px; height: 1px; background: var(--hv-line-strong); }
-        #hv-corners span:nth-child(8) { bottom: 0; right: 0; width: 1px; height: 22px; background: var(--hv-line-strong); }
+      {/* ─── Bottom meta ──────────────────────────────────────── */}
+      <div className="container-fluid relative z-10 mt-2 flex items-center justify-between gap-4 md:mt-0">
+        <p data-hero-meta className="eyebrow">
+          46°12′N&nbsp;&nbsp;6°09′E &nbsp;—&nbsp; Geneva
+        </p>
 
-        /* ── Content layer ──────────────────────────── */
-        #hv-content {
-          position: relative;
-          z-index: 10;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          min-height: 100svh;
-          min-height: 100dvh;
-          padding: 0 20px;
-        }
-        @media (min-width: 640px)  { #hv-content { padding: 0 32px; } }
-        @media (min-width: 768px)  { #hv-content { padding: 0 48px; } }
-        @media (min-width: 1024px) { #hv-content { padding: 0 64px; } }
-        @media (min-width: 1440px) { #hv-content { padding: 0 80px; } }
-
-        /* ── Top bar ────────────────────────────────── */
-        #hv-topbar {
-          padding-top: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-        }
-        @media (min-width: 768px) { #hv-topbar { padding-top: 36px; } }
-
-        .hv-eyebrow {
-          font-family: ui-monospace, 'SF Mono', 'Fira Code', monospace;
-          font-size: 10px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: var(--hv-fg-muted);
-          white-space: nowrap;
-        }
-        @media (min-width: 768px) { .hv-eyebrow { font-size: 11px; } }
-
-        #hv-wordmark {
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 15px;
-          font-style: italic;
-          letter-spacing: 0.06em;
-          color: var(--hv-fg);
-        }
-        @media (min-width: 768px) { #hv-wordmark { font-size: 17px; } }
-
-        /* ── Headline ───────────────────────────────── */
-        #hv-headline { padding: 0; }
-
-        #hv-headline h1 {
-          margin: 0;
-          font-family: Georgia, 'Times New Roman', serif;
-          font-weight: 400;
-          color: var(--hv-fg);
-          font-size: clamp(52px, 11vw, 96px);
-          line-height: 0.90;
-          letter-spacing: -0.025em;
-        }
-        @media (min-width: 768px) {
-          #hv-headline h1 { font-size: clamp(64px, 9.5vw, 112px); }
-        }
-
-        .hv-line-wrap { overflow: hidden; display: block; }
-        .hv-line-wrap + .hv-line-wrap { margin-top: 0.04em; }
-
-        .hv-line-indent { padding-left: 12vw; }
-        @media (min-width: 768px) { .hv-line-indent { padding-left: 18vw; } }
-
-        .hv-accent-word { color: var(--hv-accent); font-style: italic; }
-
-        /* ── Sub-copy ────────────────────────────────── */
-        #hv-sub {
-          margin-top: 28px;
-          max-width: 480px;
-          font-size: 14px;
-          line-height: 1.65;
-          color: rgba(242,233,212,0.70);
-          font-family: ui-sans-serif, system-ui, sans-serif;
-        }
-        @media (min-width: 768px) { #hv-sub { font-size: 15px; margin-top: 32px; } }
-
-        /* ── Bottom bar ─────────────────────────────── */
-        #hv-bottom {
-          padding-bottom: 32px;
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          gap: 20px;
-        }
-        @media (min-width: 768px) { #hv-bottom { padding-bottom: 44px; } }
-
-        #hv-cta {
-          display: inline-flex;
-          align-items: center;
-          gap: 14px;
-          text-decoration: none;
-          color: var(--hv-fg);
-          font-family: ui-monospace, 'SF Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-        }
-        @media (min-width: 768px) { #hv-cta { font-size: 11px; } }
-
-        #hv-cta:hover { color: var(--hv-accent); }
-        #hv-cta:hover #hv-cta-arrow { transform: translateX(4px); }
-
-        #hv-cta-line {
-          width: 40px; height: 1px;
-          background: var(--hv-line-strong);
-          position: relative; overflow: hidden;
-        }
-        @media (min-width: 768px) { #hv-cta-line { width: 56px; } }
-
-        #hv-cta-line::after {
-          content: '';
-          position: absolute;
-          top: 0; left: -100%;
-          width: 50%; height: 100%;
-          background: var(--hv-accent);
-          animation: hv-shimmer 2.4s linear infinite;
-        }
-
-        #hv-cta-arrow {
-          display: inline-block;
-          transition: transform 0.3s var(--hv-ease-out);
-          font-style: normal;
-        }
-
-        /* badge — desktop only */
-        #hv-badge {
-          display: none;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 4px;
-        }
-        @media (min-width: 768px) { #hv-badge { display: flex; } }
-
-        #hv-badge-ring {
-          width: 64px; height: 64px;
-          border-radius: 50%;
-          border: 1px solid var(--hv-line-strong);
-          display: flex; align-items: center; justify-content: center;
-          position: relative;
-        }
-        #hv-badge-ring::before {
-          content: '';
-          position: absolute; inset: 6px;
-          border-radius: 50%;
-          border: 1px solid var(--hv-line);
-        }
-        #hv-badge-year {
-          font-family: Georgia, serif;
-          font-size: 13px;
-          color: var(--hv-fg-muted);
-          font-style: italic;
-        }
-
-        /* progress bar */
-        #hv-progress {
-          position: absolute;
-          bottom: 0; left: 0;
-          width: 30%; height: 2px;
-          background: linear-gradient(to right, var(--hv-accent-2), var(--hv-accent));
-          animation: hv-progress 12s linear infinite;
-          transform-origin: left;
-        }
-
-        /* ── Keyframes ──────────────────────────────── */
-        @keyframes hv-shimmer {
-          0%   { left: -100%; }
-          100% { left: 200%; }
-        }
-        @keyframes hv-progress {
-          0%   { width: 0%; }
-          100% { width: 100%; }
-        }
-
-        /* ── Reduced motion ─────────────────────────── */
-        @media (prefers-reduced-motion: reduce) {
-          #hv-cta-line::after,
-          #hv-progress { animation: none !important; }
-        }
-       `}} />
-
-      <section ref={sectionRef} id="hv-section" data-section="hero">
-
-        {/* ── Two videos stacked — CSS shows one, JS plays one ── */}
-        <div id="hv-video-wrap" data-hv-video>
-          <video
-            id="hv-video-desktop"
-            ref={desktopRef}
-            src="/videos/desktop.mp4"
-            muted
-            playsInline
-            autoPlay
-            loop
-            preload="metadata"
+        <a
+          data-hero-meta
+          href="#manifesto-body"
+          aria-label="Continue"
+          className={cn(
+            'group inline-flex items-center gap-3 text-bone-100',
+            'glass rounded-full border-white/15 bg-white/[0.05] px-4 py-2 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10',
+          )}
+        >
+          <span className="font-mono text-[10px] uppercase tracking-superwide md:text-[11px]">
+            Continue
+          </span>
+          <span
             aria-hidden
-          />
-          <video
-            id="hv-video-mobile"
-            ref={mobileRef}
-            src="/videos/mobile.mp4"
-            muted
-            playsInline
-            autoPlay
-            loop
-            preload="metadata"
-            aria-hidden
-          />
-        </div>
-
-        <div id="hv-overlay" aria-hidden data-hv-overlay />
-
-        <div id="hv-corners" aria-hidden data-hv-corners>
-          {Array.from({ length: 8 }).map((_, i) => <span key={i} />)}
-        </div>
-
-        <div id="hv-progress" aria-hidden />
-
-        <div id="hv-content" data-hv-headline>
-
-          <div id="hv-topbar" />
-
-          <div id="hv-headline">
-            <h1>
-              <span className="hv-line-wrap">
-                <span data-hv-line className="block">
-                  Private{' '}
-                  <em className="hv-accent-word">Journeys</em>
-                </span>
-              </span>
-              <span className="hv-line-wrap">
-                <span data-hv-line className="hv-line-indent block">
-                  beyond{' '}
-                  <em className="hv-accent-word">Limits</em>
-                </span>
-              </span>
-            </h1>
-
-            <p id="hv-sub" data-hv-sub>
-              Meridian crafts bespoke voyages for twelve passengers at a time —
-              from frozen Patagonian fjords to the last light over the
-              Rub&rsquo; al Khali. No brochure. No itinerary. Only the horizon
-              you choose.
-            </p>
-          </div>
-
-          <div id="hv-bottom">
-            <a href="#manifesto" id="hv-cta" data-hv-cta aria-label="Scroll to manifesto">
-              <span id="hv-cta-line" />
-              <span>Continue</span>
-              <i id="hv-cta-arrow" aria-hidden>→</i>
-            </a>
-
-            <div id="hv-badge" data-hv-badge aria-hidden>
-              <div id="hv-badge-ring">
-                <span id="hv-badge-year">&#x2715;</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-    </>
+            className="relative block h-6 w-px overflow-hidden bg-bone-100/20"
+          >
+            <span className="absolute inset-x-0 top-0 block h-2.5 w-px animate-[shimmer_2s_linear_infinite] bg-ember-400" />
+          </span>
+        </a>
+      </div>
+    </section>
   );
+}
+
+// ---------------------------------------------------------------------------
+// VideoTile
+// ---------------------------------------------------------------------------
+
+interface VideoTileProps {
+  src: string;
+  index: number;
+  primary: boolean;
+  isAudioOwner: boolean;
+  onRequestAudio: (claim: boolean) => void;
+}
+
+function VideoTile({
+  src,
+  index,
+  primary,
+  isAudioOwner,
+  onRequestAudio,
+}: VideoTileProps) {
+  const tileRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [inView, setInView] = useState(false);
+
+  const muted = !isAudioOwner;
+
+  // Lazy-autoplay: only start the video once the tile is close to the viewport.
+  // Saves bandwidth/battery while the user is still reading the section above.
+  useEffect(() => {
+    const el = tileRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setInView(true);
+            io.disconnect(); // one-shot — once seen, stay on
+            break;
+          }
+        }
+      },
+      { rootMargin: '200px 0px', threshold: 0.05 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Sync the <video> element's `muted` property with the parent's ownership.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = muted;
+  }, [muted]);
+
+  // (Re)try autoplay when the video comes into view or the src changes.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !inView) return;
+    v.load();
+
+    const tryPlay = async () => {
+      try {
+        await v.play();
+        setNeedsGesture(false);
+      } catch {
+        setNeedsGesture(true);
+      }
+    };
+    void tryPlay();
+  }, [src, inView]);
+
+  // Pause when the tile scrolls well out of view (saves decoding cycles).
+  useEffect(() => {
+    const el = tileRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const v = videoRef.current;
+        if (!v) return;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (v.paused) v.play().catch(() => undefined);
+          } else {
+            if (!v.paused) v.pause();
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Progress rail
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let raf = 0;
+    const tick = () => {
+      if (v.duration > 0) setProgress(v.currentTime / v.duration);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().then(
+        () => setNeedsGesture(false),
+        () => setNeedsGesture(true),
+      );
+    } else {
+      v.pause();
+    }
+  }, []);
+
+  const toggleMute = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const v = videoRef.current;
+      if (!v) return;
+
+      onRequestAudio(muted);
+
+      if (v.paused) {
+        v.play().then(
+          () => setNeedsGesture(false),
+          () => undefined,
+        );
+      }
+    },
+    [muted, onRequestAudio],
+  );
+
+  return (
+    <div
+      ref={tileRef}
+      data-hero-tile
+      className={cn(
+        'relative w-full overflow-hidden will-animate',
+        'rounded-[1.5rem] sm:rounded-[1.75rem] md:rounded-[2rem] lg:rounded-[2.5rem]',
+        'bg-ink-900 ring-1 ring-white/10',
+        isAudioOwner && 'ring-ember-400/40',
+        'shadow-[0_30px_100px_-40px_rgba(226,137,58,0.25),0_8px_30px_-10px_rgba(0,0,0,0.55)]',
+        'h-[calc((100svh-220px)/2)] min-h-[180px] max-h-[60svh]',
+        'md:h-[calc(100svh-220px)] md:min-h-[320px] md:max-h-[820px]',
+        'transition-[box-shadow,--tw-ring-color] duration-500 ease-soft',
+      )}
+    >
+      {!failed && inView ? (
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          className="absolute inset-0 h-full w-full cursor-pointer object-cover"
+          autoPlay
+          muted
+          playsInline
+          loop
+          preload="metadata"
+          onError={() => setFailed(true)}
+          onClick={togglePlay}
+          aria-label={`Meridian — story diptych ${index + 1} of 2`}
+        />
+      ) : failed ? (
+        <div
+          aria-hidden
+          className="absolute inset-0 grid place-items-center bg-ink-900 text-bone-400"
+        >
+          <p className="font-mono text-[11px] uppercase tracking-superwide">
+            Panel {index + 1} — offline
+          </p>
+        </div>
+      ) : (
+        // Before the tile is in view, just a quiet ember glow placeholder.
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(50% 50% at 50% 50%, rgba(226,137,58,0.12) 0%, rgba(0,0,0,0) 70%)',
+          }}
+        />
+      )}
+
+      {/* Cinematic veil */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-ink-950/45 via-transparent to-ink-950/55"
+      />
+
+      {/* Top-left chip */}
+      <div
+        data-hero-glass
+        className="pointer-events-none absolute left-3 top-3 md:left-4 md:top-4"
+      >
+        <div className="glass inline-flex items-center gap-2 rounded-full border-white/15 bg-white/[0.06] px-3 py-1.5">
+          {primary ? (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inset-0 animate-ping rounded-full bg-ember-400 opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-ember-400" />
+            </span>
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-bone-100/50" />
+          )}
+          <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-100">
+            {primary ? 'Our story' : 'Dispatch'}&nbsp;—&nbsp;{romanize(index + 1)}
+          </span>
+        </div>
+      </div>
+
+      {/* Top-right audio toggle */}
+      <button
+        data-hero-glass
+        type="button"
+        onClick={toggleMute}
+        aria-label={muted ? 'Unmute panel — mutes the other' : 'Mute panel'}
+        aria-pressed={!muted}
+        className={cn(
+          'glass absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full transition-[background,border-color,color] duration-300',
+          'md:right-4 md:top-4 md:h-10 md:w-10',
+          isAudioOwner
+            ? 'border-ember-400/70 bg-ember-500/20 text-bone-50 hover:bg-ember-500/30'
+            : 'border-white/15 bg-white/[0.06] text-bone-100 hover:border-white/30 hover:bg-white/[0.12]',
+        )}
+      >
+        <AudioIcon muted={muted} />
+      </button>
+
+      {/* Gesture-required play button */}
+      {needsGesture ? (
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label="Play panel"
+          className={cn(
+            'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+            'glass grid h-16 w-16 place-items-center rounded-full border-white/20 bg-white/[0.12] backdrop-blur-xl transition-[background,transform] duration-400 ease-soft',
+            'hover:scale-[1.05] hover:bg-white/[0.18]',
+            'md:h-20 md:w-20',
+          )}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5 translate-x-0.5 text-bone-100 md:h-6 md:w-6"
+            aria-hidden
+          >
+            <path d="M8 5v14l11-7z" fill="currentColor" />
+          </svg>
+        </button>
+      ) : null}
+
+      {/* Progress rail */}
+      <div
+        aria-hidden
+        className="absolute inset-x-3 bottom-3 h-px overflow-hidden rounded-full bg-white/15 md:inset-x-4 md:bottom-4"
+      >
+        <span
+          className="block h-full bg-ember-400/90"
+          style={{ width: `${progress * 100}%`, transition: 'width 120ms linear' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audio icon
+// ---------------------------------------------------------------------------
+
+function AudioIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor" stroke="none" />
+      {muted ? (
+        <>
+          <line x1="23" y1="9" x2="17" y2="15" />
+          <line x1="17" y1="9" x2="23" y2="15" />
+        </>
+      ) : (
+        <>
+          <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+          <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function romanize(n: number): string {
+  return ['I', 'II', 'III', 'IV', 'V'][n - 1] ?? String(n);
 }

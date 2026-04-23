@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Logo from './Logo';
-import { useLoaderComplete } from '@/hooks/useLoaderComplete';
 import { cn } from '@/utils/cn';
 
 const NAV_LINKS = [
@@ -13,16 +12,23 @@ const NAV_LINKS = [
   { href: '/about', label: 'About' },
 ];
 
+/**
+ * Navbar
+ * ------
+ * The brand logo lives here and ONLY here. It is marked with
+ * `[data-logo-target]` so the LogoLoader can measure it and animate its
+ * own (flying) logo to this exact position. Because this element is always
+ * visible, the loader's unmount is seamless — the flying logo arrives at
+ * the target position and "becomes" this logo. No fade-in, no flicker.
+ */
 export default function Navbar() {
   const pathname = usePathname();
-  const loaderDone = useLoaderComplete();
 
   const [hidden, setHidden] = useState(false);
   const [condensed, setCondensed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const lastYRef = useRef(0);
 
-  // Scroll-driven hide/condense
   useEffect(() => {
     let frame = 0;
     const onScroll = () => {
@@ -43,7 +49,6 @@ export default function Navbar() {
     };
   }, []);
 
-  // Body scroll lock while mobile menu is open
   useEffect(() => {
     if (!mobileOpen) return;
     const prev = document.body.style.overflow;
@@ -53,7 +58,6 @@ export default function Navbar() {
     };
   }, [mobileOpen]);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -75,35 +79,15 @@ export default function Navbar() {
         )}
       >
         <div className="container-fluid flex items-center justify-between gap-6">
-          {/* Logo slot — the LogoLoader animates INTO this box. */}
+          {/* Logo — single element, always visible, serves as FLIP target. */}
           <Link
             href="/"
             aria-label="Meridian — home"
-            className="group relative flex items-center"
+            className="flex items-center text-bone-100"
           >
-            {/* The measurable target for the FLIP (fixed size, invisible).
-                It's rendered at the final size so `getBoundingClientRect` gives
-                the loader a stable transit destination. */}
             <span
               data-logo-target
-              aria-hidden
-              className="invisible select-none text-[20px] leading-none"
-            >
-              <Logo />
-            </span>
-
-            {/* The visible navbar logo — fades in once the loader hands over. */}
-            <span
-              className={cn(
-                'absolute left-0 top-1/2 -translate-y-1/2 text-[20px] leading-none transition-[opacity,transform] duration-700 ease-soft',
-                loaderDone
-                  ? 'opacity-100 blur-0'
-                  : 'pointer-events-none opacity-0 blur-[2px]',
-              )}
-              style={{
-                // Slight transition delay so it appears *after* the FLIP lands.
-                transitionDelay: loaderDone ? '60ms' : '0ms',
-              }}
+              className="inline-flex items-center text-[20px] leading-none md:text-[22px]"
             >
               <Logo />
             </span>
@@ -142,7 +126,6 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Right-side CTA + mobile toggle */}
           <div className="flex items-center gap-3">
             <Link
               href="/#contact"
