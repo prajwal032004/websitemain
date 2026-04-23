@@ -7,22 +7,10 @@ import { useGsap } from '@/hooks/useGsap';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
 
-/** Video source pairs. Swap filenames here if you rename the files in /public/videos. */
 const DESKTOP_SRCS = ['/videos/desktop.mp4', '/videos/desktop.mp4'] as const;
 const MOBILE_SRCS = ['/videos/mobile.mp4', '/videos/mobile.mp4'] as const;
 
-/**
- * HeroVideos — two-video diptych.
- *
- * Entrance animation is triggered by ScrollTrigger (when the section enters
- * the viewport), not by `useLoaderComplete` — because this section now lives
- * BELOW the FrameScrollCanvas, so by the time the user reaches it the loader
- * has long since dismissed. We want the choreography to fire when it becomes
- * visible, not on page load.
- *
- * Videos also lazy-start via IntersectionObserver to avoid burning bandwidth
- * on an off-screen autoplay.
- */
+
 export default function HeroVideos() {
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
@@ -36,8 +24,6 @@ export default function HeroVideos() {
     setAudioOwnerIndex(null);
   }, [sources]);
 
-  // Entrance + scroll parallax — both scroll-driven so they behave correctly
-  // when HeroVideos is the *second* section on the page.
   useGsap(
     () => {
       if (!sectionRef.current) return;
@@ -47,8 +33,8 @@ export default function HeroVideos() {
         defaults: { ease: 'expo.out' },
         scrollTrigger: {
           trigger: sectionRef.current,
-          start: 'top 80%', // fires when top of section is 80% down the viewport
-          once: true,       // play once; afterwards items remain visible
+          start: 'top 80%', 
+          once: true,      
         },
       });
 

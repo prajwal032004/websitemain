@@ -78,7 +78,7 @@ export default function FrameScrollCanvas({
         return;
       }
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1);
 
       const resizeCanvas = () => {
         const { clientWidth, clientHeight } = stage;
@@ -123,16 +123,12 @@ export default function FrameScrollCanvas({
       const ro = new ResizeObserver(() => resizeCanvas());
       ro.observe(stage);
 
-      // Entrance — canvas scales up subtly as it fades in
       const enter = gsap.fromTo(
         canvas,
         { scale: 0.96 },
         { scale: 1, duration: 1.4, ease: 'expo.out' },
       );
 
-      // ─── Scroll distance ────────────────────────────────────────────
-      // Desktop 4.5× viewport  →  each chapter gets ~1.5× vh of dwell time
-      // Mobile  4.0× viewport  →  enough to read all three comfortably
       const isMobileNow = !window.matchMedia('(min-width: 768px)').matches;
       const scrollMultiplier = isMobileNow ? 4.0 : 4.5;
 
@@ -154,17 +150,6 @@ export default function FrameScrollCanvas({
         },
       });
 
-      // ─── Chapter text reveals ────────────────────────────────────────
-      // Each chapter occupies its own exclusive 1/3 band of the total scroll
-      // distance, with a generous dwell plateau so there's no rush to read.
-      //
-      //  Ch I  : progress 0.00 – 0.30  (peak 0.12)  → ruins / figure
-      //  Ch II : progress 0.32 – 0.66  (peak 0.48)  → threshold / walls parting
-      //  Ch III: progress 0.70 – 1.00  (peak 0.84)  → open desert
-      //
-      // We compute absolute px positions from the section top so every
-      // chapter trigger is independent and cannot overlap.
-
       const chapters = gsap.utils.toArray<HTMLElement>('[data-fs-chapter]');
       const chapterTriggers: ScrollTrigger[] = [];
 
@@ -175,8 +160,6 @@ export default function FrameScrollCanvas({
 
         gsap.set(el, { opacity: 0, y: 28, willChange: 'opacity, transform' });
 
-        // Convert progress fractions → absolute scroll distances from section top.
-        // Using px values avoids the percentage-string rounding that caused overlap.
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: sectionRef.current,

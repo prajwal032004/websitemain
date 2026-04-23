@@ -12,15 +12,6 @@ const NAV_LINKS = [
   { href: '/about', label: 'About' },
 ];
 
-/**
- * Navbar
- * ------
- * The brand logo lives here and ONLY here. It is marked with
- * `[data-logo-target]` so the LogoLoader can measure it and animate its
- * own (flying) logo to this exact position. Because this element is always
- * visible, the loader's unmount is seamless — the flying logo arrives at
- * the target position and "becomes" this logo. No fade-in, no flicker.
- */
 export default function Navbar() {
   const pathname = usePathname();
 
@@ -71,11 +62,11 @@ export default function Navbar() {
     <>
       <header
         className={cn(
-          'fixed left-0 right-0 top-0 z-50 transition-[transform,padding,background,border-color] duration-500 ease-soft',
+          'fixed left-0 right-0 top-0 z-50 transition-[transform,padding,background,border-color] duration-500 ease-out',
           hidden ? '-translate-y-full' : 'translate-y-0',
           condensed
-            ? 'border-b border-[var(--line)] bg-ink-950/65 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-ink-950/55'
-            : 'border-b border-transparent py-5',
+  ? 'py-3 border-b border-white/10 bg-[rgb(255_255_255/4%)] backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_rgba(0,0,0,0.35)]'
+  : 'py-5 border-b border-transparent bg-transparent backdrop-blur-0 shadow-none'
         )}
       >
         <div className="container-fluid flex items-center justify-between gap-6">
