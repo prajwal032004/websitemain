@@ -207,8 +207,8 @@ export default function FeaturesSection() {
                     )}
                   >
                     <div className="min-h-0">
-                      <div className="grid gap-6 pb-8 md:grid-cols-12 md:pb-10">
-                        <p className="text-sm leading-relaxed text-bone-200/85 md:col-span-6 md:col-start-4 md:text-base">
+                     <div className="grid gap-6 pb-8 md:grid-cols-12 md:pb-10">
+                       <p className="text-sm leading-relaxed text-bone-200/85 md:col-span-12 md:col-start-1 md:text-base">
                           {f.body}
                         </p>
                       </div>

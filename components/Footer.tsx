@@ -38,7 +38,7 @@ export default function Footer() {
   };
 
   return (
-    <footer id="contact" className="relative overflow-hidden bg-ink-900 py-24 md:py-32">
+    <footer id="contact" className="relative overflow-hidden bg-ink-900 pt-24 pb-8 md:pt-32 md:pb-8">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -66,19 +66,26 @@ export default function Footer() {
             </p>
 
             <dl className="mt-12 grid grid-cols-2 gap-8 border-t border-[var(--line)] pt-8 text-sm">
-             
-              <div>
-                <dt className="eyebrow mb-2">India</dt>
-                <dd className="text-bone-100">+971 54 432 5050</dd>
-              </div>
-              <div>
-                <dt className="eyebrow mb-2">Email</dt>
-                <dd className="text-bone-100">desk@meridian.aero</dd>
-              </div>
-              <div>
-                <dt className="eyebrow mb-2">Operations</dt>
-                <dd className="text-bone-100">24 / 7 / 365</dd>
-              </div>
+             <div>
+  <dt className="eyebrow mb-2">India</dt>
+  <dd>
+    <a href="tel:+9119544325050" className="text-bone-100 hover:text-ember-400 transition-colors duration-300">
+      +919 54 432 5050
+    </a>
+  </dd>
+</div>
+<div>
+  <dt className="eyebrow mb-2">Email</dt>
+  <dd>
+    <a href="mailto:desk@meridian.aero" className="text-bone-100 hover:text-ember-400 transition-colors duration-300">
+      desk@meridian.aero
+    </a>
+  </dd>
+</div>
+<div>
+  <dt className="eyebrow mb-2">Operations</dt>
+  <dd className="text-bone-100">24 / 7 / 365</dd>
+</div>
             </dl>
           </div>
 
