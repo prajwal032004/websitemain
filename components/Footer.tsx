@@ -156,18 +156,18 @@ export default function Footer() {
           </p>
           <ul className="flex items-center gap-6">
             <li>
-              <a className="hover:text-bone-100 transition-colors" href="#">
+              <a className="hover:text-bone-100 transition-colors" href="/privacy">
                 Privacy
               </a>
             </li>
             <li>
-              <a className="hover:text-bone-100 transition-colors" href="#">
+              <a className="hover:text-bone-100 transition-colors" href="/terms">
                 Terms
               </a>
             </li>
             <li>
-              <a className="hover:text-bone-100 transition-colors" href="#">
-                Press
+              <a className="hover:text-bone-100 transition-colors" href="/security">
+                Security
               </a>
             </li>
           </ul>
