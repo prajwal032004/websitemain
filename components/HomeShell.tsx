@@ -9,6 +9,7 @@ const FrameScrollCanvas = dynamic(
   { ssr: false, loading: () => null },
 );
 const IntroSection = dynamic(() => import('@/components/IntroSection'), { ssr: false });
+const DesertWindSection = dynamic(() => import('@/components/DesertWindSection'), { ssr: false });
 const StatsSection = dynamic(() => import('@/components/StatsSection'), { ssr: false });
 const FeaturesSection = dynamic(() => import('@/components/FeaturesSection'), { ssr: false });
 const DestinationsMarquee = dynamic(
@@ -20,9 +21,10 @@ const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 export default function HomeShell() {
   return (
     <main className="relative">
-      <FrameScrollCanvas />
+      <FrameScrollCanvas /> 
       <HeroVideos />
       <IntroSection />
+      <DesertWindSection />
       <StatsSection />
       <FeaturesSection />
       <DestinationsMarquee />
