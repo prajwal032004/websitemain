@@ -247,12 +247,33 @@ export default function FrameScrollCanvas({
         },
       });
 
+      // ─── Bottom veil: fades in over the last ~15% of scroll ─────────
+      // Starts at 85% progress (second-to-last frame zone) and reaches
+      // full opacity at 100%, creating a seamless bleed into #0A0807.
+      const veil = document.querySelector<HTMLElement>('[data-fs-bottom-veil]');
+      const veilTrigger = veil
+        ? ScrollTrigger.create({
+            trigger: sectionRef.current,
+            start: () => `top+=${Math.round(0.85 * totalPx())} top`,
+            end:   () => `top+=${Math.round(1.00 * totalPx())} top`,
+            scrub: true,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              // Ease the opacity with a smooth curve so the fade feels
+              // organic rather than mechanical.
+              const eased = self.progress * self.progress * (3 - 2 * self.progress); // smoothstep
+              veil.style.opacity = String(eased);
+            },
+          })
+        : null;
+
       return () => {
         ro.disconnect();
         enter.kill();
         trigger.kill();
         meterTrigger.kill();
         chapterTriggers.forEach((t) => t.kill());
+        veilTrigger?.kill();
       };
     },
     [status, images.length],
@@ -300,6 +321,7 @@ export default function FrameScrollCanvas({
           }
         />
 
+        {/* ─── Top + bottom atmospheric gradient overlay ──────────────── */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-10"
@@ -310,13 +332,29 @@ export default function FrameScrollCanvas({
           }}
         />
 
+        {/* ─── Bottom veil — fades in at ~85% scroll progress ─────────────
+            Height is ~1 cm visually (clamp keeps it proportional across
+            viewports). Gradient bleeds upward from solid #0A0807 to
+            transparent so the canvas dissolves cleanly into the background.
+            Opacity is driven by JS (ScrollTrigger) above; starts at 0.       */}
+        <div
+          data-fs-bottom-veil
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
+          style={{
+            height: 'clamp(120px, 22svh, 220px)',
+            opacity: 0,
+            background: 'linear-gradient(to top, #0A0807 0%, transparent 100%)',
+          }}
+        />
+
         {/* ─── Chapter I ─────────────────────────────────────────────── */}
         <div
           data-fs-chapter
           data-fs-start="0.00"
           data-fs-end="0.30"
           data-fs-peak="0.12"
-          className="container-fluid pointer-events-none absolute inset-x-0 top-[20svh] z-20"
+          className="container-fluid pointer-events-none absolute inset-x-0 top-[20svh] z-30"
           style={{
             opacity: 0,
             textShadow: '0 2px 24px rgba(10,8,7,0.9), 0 1px 4px rgba(10,8,7,0.8)',
@@ -346,7 +384,7 @@ export default function FrameScrollCanvas({
           data-fs-start="0.345"
           data-fs-end="0.66"
           data-fs-peak="0.495"
-          className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center"
+          className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center"
           style={{
             opacity: 0,
             textShadow: '0 0 40px rgba(10,8,7,1), 0 0 20px rgba(10,8,7,0.95), 0 2px 8px rgba(10,8,7,0.9)',
@@ -373,7 +411,7 @@ export default function FrameScrollCanvas({
           data-fs-start="0.90"
           data-fs-end="1.00"
           data-fs-peak="0.84"
-          className="pointer-events-none absolute inset-0 z-20"
+          className="pointer-events-none absolute inset-0 z-30"
           style={{
             opacity: 0,
             textShadow: '0 2px 28px rgba(10,8,7,0.95), 0 1px 6px rgba(10,8,7,0.85)',
@@ -415,7 +453,7 @@ export default function FrameScrollCanvas({
         </div>
 
         {/* ─── Bottom chrome ─────────────────────────────────────────── */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 px-5 md:px-12">
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 px-5 md:px-12">
           <div className="flex items-center justify-between gap-4">
 
             {/* Left: Location indicator */}
