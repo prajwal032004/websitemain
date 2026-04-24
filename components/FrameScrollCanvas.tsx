@@ -72,26 +72,49 @@ export default function FrameScrollCanvas({
 
       const canvas = canvasRef.current;
       const stage = stageRef.current;
-      const ctx = canvas.getContext('2d', { alpha: false });
+
+      // ─── High-quality 2D context ─────────────────────────────────────
+      // alpha:false        → skip alpha compositing pass (perf)
+      // desynchronized:false → colour-accurate, no screen-tearing artefacts
+      const ctx = canvas.getContext('2d', {
+        alpha: false,
+        desynchronized: false,
+      });
       if (!ctx) {
         onError?.(new Error('Canvas 2D context unavailable.'));
         return;
       }
 
-      const dpr = Math.min(window.devicePixelRatio || 1);
+      // ─── Full device pixel ratio — NEVER cap this ────────────────────
+      // Capping DPR (e.g. Math.min(dpr, 2)) is the #1 cause of blurry
+      // canvas on Retina / 3× flagship screens. Use the real value.
+      const dpr = window.devicePixelRatio || 1;
 
+      // ─── resizeCanvas ────────────────────────────────────────────────
+      // Sets the canvas backing store to physical pixels (logical × dpr),
+      // then applies a permanent ctx transform so all subsequent draw calls
+      // work in logical pixel coordinates — no manual dpr math in drawFrame.
       const resizeCanvas = () => {
-        const { clientWidth, clientHeight } = stage;
-        canvas.width = Math.max(1, Math.floor(clientWidth * dpr));
-        canvas.height = Math.max(1, Math.floor(clientHeight * dpr));
-        canvas.style.width = `${clientWidth}px`;
-        canvas.style.height = `${clientHeight}px`;
+        const { clientWidth: cw, clientHeight: ch } = stage;
+
+        canvas.width  = Math.max(1, Math.floor(cw * dpr));
+        canvas.height = Math.max(1, Math.floor(ch * dpr));
+        canvas.style.width  = `${cw}px`;
+        canvas.style.height = `${ch}px`;
+
+        // Scale once; drawFrame always sees logical pixels.
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Highest quality interpolation — browsers can silently reset this,
+        // so we also re-apply it inside drawFrame before every paint.
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
+
         stateRef.current.lastDrawn = -1;
         drawFrame(stateRef.current.frame);
       };
 
+      // ─── drawFrame ──────────────────────────────────────────────────
       const drawFrame = (index: number) => {
         const i = Math.max(0, Math.min(TOTAL_FRAMES - 1, Math.round(index)));
         if (i === stateRef.current.lastDrawn) return;
@@ -99,19 +122,32 @@ export default function FrameScrollCanvas({
         const img = images[i];
         if (!img || !img.naturalWidth) return;
 
-        const cw = canvas.width;
-        const ch = canvas.height;
+        // Re-apply smoothing every frame — some browsers reset it per-frame.
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // ── Object-fit: cover in logical-pixel space ──────────────────
+        // Because ctx is scaled by dpr via setTransform, all coordinates
+        // below are in CSS/logical pixels — the GPU handles the DPR upscale.
+        const { clientWidth: cw, clientHeight: ch } = stage;
         const iw = img.naturalWidth;
         const ih = img.naturalHeight;
 
+        // Cover: enlarge the image until it fills the stage in both axes.
         const scale = Math.max(cw / iw, ch / ih);
         const drawW = iw * scale;
         const drawH = ih * scale;
-        const dx = (cw - drawW) * 0.5;
-        const dy = (ch - drawH) * 0.5;
+        const dx    = (cw - drawW) * 0.5; // centre horizontally
+        const dy    = (ch - drawH) * 0.5; // centre vertically
 
+        // Fill background in physical-pixel space (before dpr transform).
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = '#0A0807';
-        ctx.fillRect(0, 0, cw, ch);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore(); // restores the dpr-scaled transform
+
+        // Draw image — covers the stage at full native sharpness.
         ctx.drawImage(img, dx, dy, drawW, drawH);
 
         stateRef.current.lastDrawn = i;
@@ -245,12 +281,23 @@ export default function FrameScrollCanvas({
           }}
         />
 
+        {/*
+          'high-quality' is a valid CSS value for image-rendering but is not
+          yet in React's CSSProperties type union. We cast via a style object
+          typed as React.CSSProperties & { imageRendering: string } to avoid
+          the TS error while keeping the runtime value correct.
+        */}
         <canvas
           ref={canvasRef}
           className={cn(
             'frame-canvas transition-opacity duration-[1200ms] ease-soft',
             status === 'ready' && loaderDone ? 'opacity-100' : 'opacity-0',
           )}
+          style={
+            {
+              imageRendering: 'high-quality',
+            } as React.CSSProperties & { imageRendering: string }
+          }
         />
 
         <div
@@ -263,15 +310,18 @@ export default function FrameScrollCanvas({
           }}
         />
 
+        {/* ─── Chapter I ─────────────────────────────────────────────── */}
         <div
           data-fs-chapter
           data-fs-start="0.00"
           data-fs-end="0.30"
           data-fs-peak="0.12"
           className="container-fluid pointer-events-none absolute inset-x-0 top-[20svh] z-20"
-          style={{ textShadow: '0 2px 24px rgba(10,8,7,0.9), 0 1px 4px rgba(10,8,7,0.8)' }}
+          style={{
+            opacity: 0,
+            textShadow: '0 2px 24px rgba(10,8,7,0.9), 0 1px 4px rgba(10,8,7,0.8)',
+          }}
         >
-          {/* Top row: label left, hint right */}
           <div className="flex items-start justify-between gap-4">
             <div className="max-w-[22ch]">
               <p className="eyebrow mb-2 text-bone-200/80 text-[10px] md:text-[11px]">Chapter I</p>
@@ -290,13 +340,17 @@ export default function FrameScrollCanvas({
           </div>
         </div>
 
+        {/* ─── Chapter II ────────────────────────────────────────────── */}
         <div
           data-fs-chapter
           data-fs-start="0.345"
           data-fs-end="0.66"
           data-fs-peak="0.495"
           className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center"
-          style={{ textShadow: '0 0 40px rgba(10,8,7,1), 0 0 20px rgba(10,8,7,0.95), 0 2px 8px rgba(10,8,7,0.9)' }}
+          style={{
+            opacity: 0,
+            textShadow: '0 0 40px rgba(10,8,7,1), 0 0 20px rgba(10,8,7,0.95), 0 2px 8px rgba(10,8,7,0.9)',
+          }}
         >
           <p className="eyebrow mb-3 text-bone-200/80 text-[10px] md:text-[11px]">Chapter II</p>
           <h3 className="font-display text-[clamp(2.8rem,10vw,7rem)] italic leading-[0.90] text-balance text-center px-4">
@@ -313,13 +367,17 @@ export default function FrameScrollCanvas({
           </p>
         </div>
 
+        {/* ─── Chapter III ───────────────────────────────────────────── */}
         <div
           data-fs-chapter
           data-fs-start="0.90"
           data-fs-end="1.00"
           data-fs-peak="0.84"
           className="pointer-events-none absolute inset-0 z-20"
-          style={{ textShadow: '0 2px 28px rgba(10,8,7,0.95), 0 1px 6px rgba(10,8,7,0.85)' }}
+          style={{
+            opacity: 0,
+            textShadow: '0 2px 28px rgba(10,8,7,0.95), 0 1px 6px rgba(10,8,7,0.85)',
+          }}
         >
           {/* ── Top: chapter label centred at top of sky ── */}
           <div className="absolute inset-x-0 top-[8svh] flex flex-col items-center">
@@ -355,7 +413,8 @@ export default function FrameScrollCanvas({
             </p>
           </div>
         </div>
-{/* ─── Bottom chrome ─────── */}
+
+        {/* ─── Bottom chrome ─────────────────────────────────────────── */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 px-5 md:px-12">
           <div className="flex items-center justify-between gap-4">
 
