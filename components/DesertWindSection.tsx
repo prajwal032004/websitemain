@@ -596,11 +596,10 @@ function PanelLabel({
 }) {
   return (
     <div
-      className={`pointer-events-none absolute z-10 flex items-center gap-3 ${
-        top
+      className={`pointer-events-none absolute z-10 flex items-center gap-3 ${top
           ? 'left-4 top-4 md:left-5 md:top-5'
           : 'bottom-4 left-4 md:bottom-5 md:left-5'
-      }`}
+        }`}
     >
       <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-200/90">
         {depth}

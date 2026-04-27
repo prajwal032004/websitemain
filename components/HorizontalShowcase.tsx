@@ -17,16 +17,9 @@ const FILMS = [
 ];
 
 export default function HorizontalShowcase() {
-  // ── Single ref: trigger === pin === this element ──────────────────────────
-  // Root cause of the DesertWind overlap: the previous version had a wrapper
-  // <div> as the trigger and the inner <section> as the pin target. GSAP
-  // measures the scroll budget from the trigger and injects a spacer *after*
-  // the pinned element. When they differ, the spacer lands in the wrong DOM
-  // position → sections above (DesertWind) lose their reserved height → they
-  // appear to overlap with the pinned showcase.
-  //
-  // Fix: one element serves as both trigger and pin. GSAP then inserts the
-  // spacer immediately after it, correctly pushing DestinationsMarquee down.
+  // trigger === pin === one element.
+  // GSAP inserts its pinSpacing spacer immediately after this element,
+  // which correctly pushes DestinationsMarquee down.
   const sectionRef = useRef<HTMLElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
@@ -37,8 +30,6 @@ export default function HorizontalShowcase() {
     const track = trackRef.current;
     if (!section || !track) return;
 
-    // Lazy getter — GSAP re-calls this on every invalidateOnRefresh so the
-    // value is always current after resize or accordion reflow.
     const getScrollAmount = () => track.scrollWidth - window.innerWidth;
 
     const tween = gsap.to(track, {
@@ -48,18 +39,17 @@ export default function HorizontalShowcase() {
 
     const st = ScrollTrigger.create({
       animation: tween,
-      trigger: section,   // ← same element
-      pin: section,       // ← same element
+      trigger: section,
+      pin: section,
       start: 'top top',
       end: () => `+=${getScrollAmount()}`,
       scrub: 1,
-      pinSpacing: true,   // GSAP reserves vertical space after the section
+      pinSpacing: true,
       anticipatePin: 1,
       invalidateOnRefresh: true,
       fastScrollEnd: true,
     });
 
-    // Refresh when track width changes (accordion open, resize, font load).
     let roTimer: ReturnType<typeof setTimeout>;
     const ro = new ResizeObserver(() => {
       clearTimeout(roTimer);
@@ -76,13 +66,30 @@ export default function HorizontalShowcase() {
   }, [], sectionRef);
 
   return (
-    // No outer wrapper div. overflow-hidden is on the inner absolute div,
-    // NOT on the section — if the section itself clips overflow, it also
-    // clips the GSAP spacer that GSAP appends as a sibling, breaking height.
+    // ─── z-index: 2 is the critical addition ───────────────────────────────
+    //
+    // When GSAP pins this section it switches it to `position: fixed`.
+    // Fixed elements compete with every stacking context on the page.
+    //
+    // HomeShell wraps the sections ABOVE this one (DesertWind, Features…)
+    // in a z-index:1 group, and the sections BELOW (Marquee, Footer) in a
+    // z-index:3 group. This section therefore needs z-index:2 so that:
+    //
+    //   • It paints ON TOP of layer-1 sections (which scroll away above it).
+    //   • It paints BELOW layer-3 sections (which scroll over it from below).
+    //
+    // Without this z-index the browser uses DOM order for paint priority and
+    // DesertWind / FeaturesSection (which appear earlier in the DOM but have
+    // their own `position:relative` stacking contexts) paint over the pin.
+    //
+    // DO NOT add `overflow-hidden` to this <section>. GSAP appends its
+    // pinSpacing spacer as an immediate sibling; clipping the section would
+    // also clip the spacer height, breaking the reserved scroll budget.
     <section
       ref={sectionRef}
       id="archive"
       className="relative h-[100svh] w-full bg-ink-950 border-t border-[var(--line)]"
+      style={{ zIndex: 2 }}
     >
       {/* Section label */}
       <div className="absolute top-12 left-6 md:left-12 z-10 flex items-baseline gap-6 pointer-events-none">
@@ -92,8 +99,8 @@ export default function HorizontalShowcase() {
         </span>
       </div>
 
-      {/* overflow-hidden here clips cards visually without touching the
-          GSAP spacer, which lives outside this absolute container.      */}
+      {/* overflow-hidden here clips the cards visually without touching the
+          GSAP spacer, which lives outside this absolute container.          */}
       <div className="absolute inset-0 overflow-hidden">
         <div
           ref={trackRef}

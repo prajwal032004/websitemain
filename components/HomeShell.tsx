@@ -6,91 +6,123 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import HeroVideos from '@/components/HeroVideos';
 
-// Heavy interactive sections split into their own chunks.
 const FrameScrollCanvas = dynamic(
   () => import('@/components/FrameScrollCanvas'),
   { ssr: false, loading: () => null },
 );
 const IntroSection = dynamic(
   () => import('@/components/IntroSection'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const DesertWindSection = dynamic(
   () => import('@/components/DesertWindSection'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const StatsSection = dynamic(
   () => import('@/components/StatsSection'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const FeaturesSection = dynamic(
   () => import('@/components/FeaturesSection'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const HorizontalShowcase = dynamic(
   () => import('@/components/HorizontalShowcase'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const DestinationsMarquee = dynamic(
   () => import('@/components/DestinationsMarquee'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 const Footer = dynamic(
   () => import('@/components/Footer'),
-  { ssr: false },
+  { ssr: false, loading: () => null },
 );
 
 export default function HomeShell() {
-  // ── Global ScrollTrigger refresh after all dynamic chunks mount ──────────
-  //
-  // Problem: every dynamic() import resolves asynchronously. By the time
-  // HorizontalShowcase (the last pinned section) mounts and measures its
-  // track width, earlier ScrollTriggers (FrameScrollCanvas pin, chapter
-  // triggers) have already stored stale pixel offsets based on a shorter
-  // document. This causes:
-  //   • HorizontalShowcase pin starting too early / too late
-  //   • FrameScrollCanvas overshooting its scroll budget
-  //   • 1-frame "jump" when crossing section boundaries
-  //
-  // Fix: after the first paint where all sections are in the DOM, call
-  // ScrollTrigger.refresh() which forces GSAP to re-walk the document,
-  // remeasure every trigger start/end, and repin correctly.
-  //
-  // We use two refresh calls:
-  //   1. After a short rAF delay (catches sections that mounted synchronously
-  //      but whose images/fonts haven't loaded yet).
-  //   2. After 1.5 s (catches lazy-loaded images that affect document height
-  //      — particularly the DesertWindSection Next/Image panels).
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
-    // First pass — after browser has painted the initial layout.
-    const raf = requestAnimationFrame(() => {
-      ScrollTrigger.refresh();
-    });
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => ScrollTrigger.refresh(true), 120);
+    };
 
-    // Second pass — after images and web fonts are likely loaded.
-    const timer = setTimeout(() => {
-      ScrollTrigger.refresh();
-    }, 1500);
+    const ro = new ResizeObserver(refresh);
+    ro.observe(document.body);
+    window.addEventListener('load', refresh);
+    document.fonts.ready.then(refresh);
 
     return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(timer);
+      clearTimeout(debounceTimer);
+      ro.disconnect();
+      window.removeEventListener('load', refresh);
     };
   }, []);
 
+  // ─── Z-INDEX STRATEGY FOR GSAP PIN ───────────────────────────────────────
+  //
+  // When GSAP pins HorizontalShowcase it switches the <section> to
+  // `position: fixed`. A fixed element escapes normal flow and competes
+  // with every OTHER stacking context on the page for paint order.
+  //
+  // Every section with `position: relative` on its root IS a stacking
+  // context. Without deliberate z-index values the browser paints them
+  // in DOM order — sections that appear LATER in the DOM paint ON TOP of
+  // earlier ones, including the fixed showcase. That's why DesertWind,
+  // Stats and Features were appearing in front of (or behind) the pin.
+  //
+  // Three-layer z-index contract:
+  //
+  //   z 1  — sections ABOVE the showcase in the DOM.
+  //           (FrameScrollCanvas → FeaturesSection)
+  //           These scroll upward and out of view. They must NOT paint
+  //           over the pinned showcase that appears below them in the DOM.
+  //
+  //   z 2  — the HorizontalShowcase itself (set inside that component).
+  //           Sits above layer 1 while pinned. No wrapper here because
+  //           any positioned ancestor would intercept `position:fixed`
+  //           and re-anchor it to that ancestor instead of the viewport.
+  //
+  //   z 3  — sections BELOW the showcase in the DOM.
+  //           (DestinationsMarquee, Footer)
+  //           These scroll UP over the pinned showcase once the pin
+  //           releases. They must paint on TOP of the pinned layer.
+  //
+  // `isolation: isolate` on each group creates a self-contained stacking
+  // context so children's internal z-indexes don't leak out and interfere
+  // with the showcase's z-index.
+  //
+  // CRITICAL: <main> must have NO `position` set. A positioned <main>
+  // becomes the containing block for `position:fixed` children, so the
+  // pinned section would be fixed relative to <main> (scrolls with page)
+  // instead of the true viewport.
+
   return (
-    <main className="relative">
-      <FrameScrollCanvas />
-      <HeroVideos />
-      <IntroSection />
-      <DesertWindSection />
-      <StatsSection />
-      <FeaturesSection />
-      <HorizontalShowcase />
-      <DestinationsMarquee />
-      <Footer />
+    <main className="bg-ink-950">
+
+      {/* ── Layer 1: sections that scroll away ABOVE the pin ── */}
+      <div style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
+        <FrameScrollCanvas />
+        <HeroVideos />
+        <IntroSection />
+        <DesertWindSection />
+        <StatsSection />
+        <FeaturesSection />
+      </div>
+
+
+
+      {/* ── Layer 3: sections that scroll OVER the pin ──────────────────────
+          Must be z-index: 3 so they paint on top of the pinned section
+          (z-index: 2) as they scroll up into the viewport after the pin
+          releases.                                                          */}
+      <div style={{ position: 'relative', zIndex: 3, isolation: 'isolate' }}>
+        <DestinationsMarquee />
+        <Footer />
+      </div>
+
     </main>
   );
 }

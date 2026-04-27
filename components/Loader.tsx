@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cn } from '@/utils/cn';
 
 interface LoaderProps {
   /** 0..1 — mirrors the preloader's own progress value. */
   progress: number;
-  /** When true, the loader plays its exit animation and then unmounts itself. */
+  /** When true, the loader plays its curtain-split exit and then unmounts. */
   done: boolean;
   /** Called after the exit animation has finished and the loader can be removed. */
   onExited?: () => void;
@@ -17,35 +16,67 @@ interface LoaderProps {
 export default function Loader({ progress, done, onExited, error }: LoaderProps) {
   const [visible, setVisible] = useState(true);
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [phase, setPhase] = useState<'loading' | 'reveal' | 'gone'>('loading');
+
+  const topRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
-  // Smoothly animate the displayed progress so the counter doesn't jitter.
+  // ── Smooth counter ───────────────────────────────────────────────────────
   useEffect(() => {
     const target = Math.max(0, Math.min(1, progress));
-
     const tick = () => {
-      setDisplayProgress((current) => {
-        const delta = target - current;
+      setDisplayProgress((cur) => {
+        const delta = target - cur;
         if (Math.abs(delta) < 0.0005) return target;
-        return current + delta * 0.12;
+        return cur + delta * 0.12;
       });
       rafRef.current = requestAnimationFrame(tick);
     };
-
     rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [progress]);
 
-  // Exit sequence — wait for CSS transition, then notify parent.
+  // ── Curtain-split exit when done ─────────────────────────────────────────
   useEffect(() => {
     if (!done) return;
-    const timeout = window.setTimeout(() => {
-      setVisible(false);
-      onExited?.();
-    }, 1100);
-    return () => window.clearTimeout(timeout);
+
+    // Short flicker pause, then trigger reveal phase
+    const revealTimer = window.setTimeout(async () => {
+      setPhase('reveal');
+
+      const top = topRef.current;
+      const bottom = bottomRef.current;
+      const content = contentRef.current;
+      if (!top || !bottom) return;
+
+      // Fade content out first
+      if (content) {
+        content.style.transition = 'opacity 0.35s ease';
+        content.style.opacity = '0';
+      }
+
+      // Wait a beat then split the curtains
+      await delay(200);
+
+      const easing = 'cubic-bezier(0.77, 0, 0.175, 1)';
+      top.style.transition = `transform 1.0s ${easing}`;
+      bottom.style.transition = `transform 1.0s ${easing}`;
+      top.style.transform = 'translateY(-100%)';
+      bottom.style.transform = 'translateY(100%)';
+
+      // After curtains clear, mark gone
+      const goneTimer = window.setTimeout(() => {
+        setVisible(false);
+        setPhase('gone');
+        onExited?.();
+      }, 1100);
+
+      return () => window.clearTimeout(goneTimer);
+    }, 180);
+
+    return () => window.clearTimeout(revealTimer);
   }, [done, onExited]);
 
   if (!visible) return null;
@@ -57,91 +88,107 @@ export default function Loader({ progress, done, onExited, error }: LoaderProps)
       aria-hidden={done}
       role="status"
       aria-live="polite"
-      className={cn(
-        'fixed inset-0 z-[100] flex flex-col justify-between overflow-hidden bg-ink-950 text-bone-100',
-        'transition-[clip-path,opacity] duration-[1100ms] ease-silk grain',
-        done
-          ? '[clip-path:inset(0_0_100%_0)] opacity-0'
-          : '[clip-path:inset(0_0_0_0)] opacity-100',
-      )}
+      className="fixed inset-0 z-[120] pointer-events-none overflow-hidden"
     >
-      {/* Soft ambient glow that breathes while loading */}
+      {/* ── Top curtain half ──────────────────────────────────────────── */}
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(60% 40% at 50% 60%, rgba(226,137,58,0.18) 0%, rgba(226,137,58,0.06) 35%, transparent 70%)',
-        }}
-      />
-
-      {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-6 pt-6 md:px-12 md:pt-10">
-        <span className="font-mono text-[11px] uppercase tracking-superwide text-bone-400">
-          Meridian / 00°00′
-        </span>
-        <span className="font-mono text-[11px] uppercase tracking-superwide text-bone-400">
-          Preparing sequence
-        </span>
-      </header>
-
-      {/* Center mark */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center">
-        <div className="mb-8 flex items-center gap-4 font-mono text-[10px] uppercase tracking-superwide text-bone-400">
-          <span className="h-px w-10 bg-bone-400/40" />
-          <span>Expedition No. 07</span>
-          <span className="h-px w-10 bg-bone-400/40" />
-        </div>
-
-        <h1 className="font-display text-[14vw] leading-[0.9] tracking-ultratight md:text-[120px]">
-          <span className="block italic text-bone-100">Meridian</span>
-        </h1>
-
-        <p className="mt-6 max-w-md font-display text-[15px] italic text-bone-300/70">
-          Where the horizon ends and the voyage begins.
-        </p>
+        ref={topRef}
+        className="absolute inset-x-0 top-0 h-1/2 bg-ink-950 will-change-transform"
+        style={{ transform: 'translateY(0)' }}
+      >
+        {/* Ambient fog */}
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-40"
+          style={{
+            background:
+              'radial-gradient(ellipse at 30% 80%, rgba(226,137,58,0.22) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(184,146,74,0.12) 0%, transparent 60%)',
+          }}
+        />
+        {/* Grain */}
+        <div aria-hidden className="grain absolute inset-0" />
       </div>
 
-      {/* Progress footer */}
-      <footer className="relative z-10 px-6 pb-8 md:px-12 md:pb-12">
-        <div className="flex items-end justify-between gap-8">
-          <div className="min-w-0">
-            <div className="eyebrow mb-2">Loading</div>
-            <div className="flex items-baseline gap-3">
-              <span className="font-display text-5xl tabular-nums leading-none md:text-7xl">
-                {String(pct).padStart(3, '0')}
-              </span>
-              <span className="font-mono text-xs text-bone-400">%</span>
-            </div>
-          </div>
+      {/* ── Bottom curtain half ───────────────────────────────────────── */}
+      <div
+        ref={bottomRef}
+        className="absolute inset-x-0 bottom-0 h-1/2 bg-ink-950 will-change-transform"
+        style={{ transform: 'translateY(0)' }}
+      >
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-30"
+          style={{
+            background:
+              'radial-gradient(ellipse at 70% 20%, rgba(226,137,58,0.18) 0%, transparent 60%)',
+          }}
+        />
+        <div aria-hidden className="grain absolute inset-0" />
+      </div>
 
-          <div className="hidden text-right md:block">
-            <div className="eyebrow mb-2">Status</div>
-            <div className="font-mono text-xs text-bone-100">
-              {error ? 'Recovering' : done ? 'Ready' : 'Transmitting…'}
-            </div>
-          </div>
+      {/* ── Center brand + counter ────────────────────────────────────── */}
+      {/* Lives above both curtain halves; fades out before curtains split */}
+      <div
+        ref={contentRef}
+        className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-8 text-bone-100"
+        style={{ opacity: 1 }}
+      >
+        {/* Eyebrow */}
+        <p
+          className="font-mono text-[10px] uppercase tracking-superwide text-bone-400"
+          style={{ animation: 'fadeSlideUp 1.1s cubic-bezier(0.77,0,0.175,1) both' }}
+        >
+          Expedition No. 07
+        </p>
+
+        {/* Wordmark */}
+        <h1
+          className="font-display text-[18vw] italic leading-[0.88] tracking-ultratight md:text-[10rem]"
+          style={{ animation: 'fadeSlideUp 1.2s 0.08s cubic-bezier(0.77,0,0.175,1) both' }}
+        >
+          Meridian
+          <span className="text-ember-400">.</span>
+        </h1>
+
+        {/* Counter */}
+        <div
+          className="font-mono text-xs tracking-[0.5em] text-bone-400"
+          style={{ animation: 'fadeSlideUp 1.2s 0.16s cubic-bezier(0.77,0,0.175,1) both' }}
+        >
+          {String(pct).padStart(3, '0')}
         </div>
 
         {/* Progress rail */}
-        <div className="relative mt-6 h-px w-full bg-bone-100/15">
+        <div className="relative mt-2 h-px w-48 bg-bone-100/15 md:w-64">
           <div
-            className="absolute left-0 top-0 h-full bg-ember-500 transition-[width] duration-500 ease-soft"
-            style={{ width: `${pct}%` }}
+            className="absolute left-0 top-0 h-full bg-ember-500"
+            style={{ width: `${pct}%`, transition: 'width 0.5s ease' }}
           />
-          {/* A thin moving tick for life */}
           <div
-            className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-ember-400 shadow-[0_0_14px_2px_rgba(226,137,58,0.6)] transition-[left] duration-500 ease-soft"
-            style={{ left: `calc(${pct}% - 4px)` }}
+            className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-ember-400 shadow-[0_0_14px_2px_rgba(226,137,58,0.6)]"
+            style={{ left: `calc(${pct}% - 4px)`, transition: 'left 0.5s ease' }}
           />
         </div>
 
-        {error ? (
-          <p className="mt-4 font-mono text-[11px] text-ember-400/80">
-            {error} &nbsp;— continuing in degraded mode.
+        {error && (
+          <p className="font-mono text-[11px] text-ember-400/80">
+            {error}&nbsp;— continuing in degraded mode.
           </p>
-        ) : null}
-      </footer>
+        )}
+      </div>
+
+      {/* ── Keyframes injected once via a style tag ───────────────────── */}
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+      `}</style>
     </div>
   );
+}
+
+// ── Tiny helper ──────────────────────────────────────────────────────────────
+function delay(ms: number) {
+  return new Promise<void>((res) => setTimeout(res, ms));
 }

@@ -1,91 +1,105 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGsap } from '@/hooks/useGsap';
 import { cn } from '@/utils/cn';
 
-const SPECS = [
-  ['Aircraft', 'Gulfstream G650ER'],
-  ['Max range', '11,263 km'],
-  ['Cruise speed', 'Mach 0.925 (480 kts)'],
-  ['Passenger capacity', '12 + 1 attendant'],
-  ['Cabin length', '14.05 m'],
-  ['Cabin altitude', '4,060 ft at FL 510'],
-] as const;
-
 const FEATURES = [
   {
-    title: 'Pets at altitude',
-    body: 'Full manifest rights for up to four animals, vet-cleared, on dedicated upholstered seating. A member of the crew carries their papers for you.',
+    index: '01',
+    title: 'Readiness year-round',
+    body:
+      'Our aircraft sits at 90-minute readiness, 365 days a year. No repositioning delays, no crew rest windows that compromise your window. When you call, we are already dressed.',
+    accent: false,
+    wide: true,
   },
   {
-    title: '24-hour operations desk',
-    body: 'Every Meridian client has one phone number, nine names, and no menu. A human answers inside twelve seconds, at any hour, in any time zone.',
+    index: '02',
+    title: 'The operations desk',
+    body:
+      'Eleven people. No call centre. No ticket queue. The same voice answers at 3 AM Fiji time as at noon in Geneva — and that voice already knows your preferences.',
+    accent: false,
+    wide: false,
   },
   {
-    title: 'Onboard provisioning',
-    body: 'Dinner from the restaurant of your choice — or from a restaurant that closed at sundown. Our concierges have a standing arrangement with fourteen of them.',
+    index: '03',
+    title: 'Impossible clearances',
+    body:
+      'We have landed at airfields that officially do not accept private traffic. Diplomatic permits, restricted overflights, last-hour slot injections — this is the unglamorous half of what we do.',
+    accent: true,
+    wide: false,
   },
   {
-    title: 'Fuel-to-runway in 70 minutes',
-    body: 'From the first request to wheels-up. We are measured by minutes, not by the glossy brochure you did not receive.',
+    index: '04',
+    title: 'Discretion as standard',
+    body:
+      'We do not maintain passenger manifests beyond the legally required minimum. We do not discuss who flies with us. We have never been asked twice.',
+    accent: false,
+    wide: false,
   },
-];
+  {
+    index: '05',
+    title: 'The 650ER at altitude',
+    body:
+      'Mach 0.925. Range of 7,500 nm non-stop. Cabin pressurised to 4,850 ft at cruise. You arrive in the same condition you boarded — rested, ready, present.',
+    accent: false,
+    wide: false,
+  },
+  {
+    index: '06',
+    title: 'Bespoke cabin',
+    body:
+      'No standard configuration. The cabin is reset for each mission — layout, provisions, temperature, fragrance. We have never served the same flight twice.',
+    accent: false,
+    wide: true,
+  },
+] as const;
 
 export default function FeaturesSection() {
   const ref = useRef<HTMLElement | null>(null);
-  const [openIndex, setOpenIndex] = useState(0);
-
-  // ── Refresh ScrollTrigger after accordion animation completes ──────────────
-  // Using plain useEffect (NOT useGsap) so we don't re-run the GSAP context.
-  // The 520ms delay ensures the CSS transition (duration-500) fully settles
-  // before GSAP recalculates all trigger offsets — preventing the jitter that
-  // occurs when HorizontalShowcase's pinned trigger fires mid-animation.
-  useEffect(() => {
-    const id = setTimeout(() => {
-      ScrollTrigger.refresh();
-    }, 520);
-    return () => clearTimeout(id);
-  }, [openIndex]);
 
   useGsap(
     () => {
       gsap.registerPlugin(ScrollTrigger);
 
       gsap.fromTo(
-        '[data-feat-spec]',
-        { opacity: 0, y: 20 },
+        '[data-feat-meta]',
+        { opacity: 0, y: 18 },
         {
           opacity: 1,
           y: 0,
-          duration: 0.8,
-          stagger: 0.06,
+          duration: 0.9,
+          stagger: 0.08,
           ease: 'power3.out',
           scrollTrigger: {
-            trigger: '[data-feat-spec-group]',
-            start: 'top 75%',
+            trigger: ref.current,
+            start: 'top 78%',
             once: true,
           },
         },
       );
 
-      gsap.fromTo(
-        '[data-feat-image]',
-        { scale: 1.08, opacity: 0 },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: 1.6,
-          ease: 'expo.out',
-          scrollTrigger: {
-            trigger: '[data-feat-image]',
-            start: 'top 80%',
-            once: true,
+      gsap.utils.toArray<HTMLElement>('[data-feat-card]').forEach((el, i) => {
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: 50, scale: 0.97 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 1.0,
+            delay: i * 0.06,
+            ease: 'expo.out',
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 84%',
+              once: true,
+            },
           },
-        },
-      );
+        );
+      });
     },
     [],
     ref,
@@ -94,151 +108,95 @@ export default function FeaturesSection() {
   return (
     <section
       ref={ref}
-      id="aircraft"
-      className="relative bg-ink-950 py-28 md:py-40"
+      id="features"
+      className="relative bg-ink-900 py-28 text-bone-100 md:py-40"
     >
-      <div className="container-fluid">
-        <div className="mb-16 flex items-end justify-between border-t border-[var(--line)] pt-6 md:mb-24">
-          <div>
-            <p className="eyebrow mb-4">§ 03 — Aircraft</p>
-            <h2 className="max-w-[18ch] font-display text-6xl italic leading-[0.95] text-balance md:text-7xl">
-              A single airframe. Kept{' '}
-              <span className="text-ember-400">ready</span>.
-            </h2>
-          </div>
-          <p className="hidden max-w-[28ch] text-right text-sm leading-relaxed text-bone-200/70 md:block">
-            Fleet rotation is a compromise. Meridian operates one Gulfstream
-            G650ER, under one dedicated crew, under one maintenance regime,
-            on permanent standby in Geneva.
+      {/* Background texture layer */}
+      <div aria-hidden className="grain pointer-events-none absolute inset-0 z-0 opacity-60 overflow-hidden" />
+
+      {/* Ember glow — top right */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            'radial-gradient(55% 40% at 85% 10%, rgba(226,137,58,0.10) 0%, transparent 65%), radial-gradient(45% 35% at 15% 90%, rgba(142,74,20,0.08) 0%, transparent 65%)',
+        }}
+      />
+
+      <div className="container-fluid relative z-10">
+        {/* Header */}
+        <div className="mb-14 flex items-end justify-between border-t border-[var(--line)] pt-6 md:mb-20">
+          <p data-feat-meta className="eyebrow">§ 03 — How we operate</p>
+          <p data-feat-meta className="eyebrow hidden md:block text-bone-200/50">
+            Six principles, one aircraft
           </p>
         </div>
 
-        <div className="grid gap-12 md:grid-cols-12">
-          {/* Aircraft image */}
-          <div className="md:col-span-7">
-            <div
-              data-feat-image
-              className="relative aspect-[16/10] overflow-hidden rounded-sm ring-1 ring-[var(--line-strong)]"
-            >
-              <img
-                src="/videos/hero-2-poster.jpg"
-                alt="Gulfstream G650ER overlooking the horizon"
-                className="h-full w-full object-cover"
-              />
-              <div
-                aria-hidden
-                className="absolute inset-0 bg-gradient-to-t from-ink-950/70 via-transparent to-ink-950/30 mix-blend-multiply"
-              />
-
-              {/* HUD overlay */}
-              <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-8">
-                <div className="flex items-start justify-between font-mono text-[10px] uppercase tracking-superwide text-bone-100/85">
-                  <span>GL-650ER / HB-MRD</span>
-                  <span>FL 510 — M 0.925</span>
-                </div>
-                <div className="flex items-end justify-between">
-                  <div className="font-display text-3xl italic text-bone-100 md:text-5xl">
-                    Gulfstream{' '}
-                    <span className="text-ember-400">650ER</span>
-                  </div>
-                  <div className="hidden font-mono text-[10px] uppercase tracking-superwide text-bone-100/70 md:block">
-                    Ready — Geneva, 04:12 UTC
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Specs */}
-          <div
-            data-feat-spec-group
-            className="md:col-span-5 md:col-start-8 md:pt-4"
-          >
-            <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
-              {SPECS.map(([key, val]) => (
-                <li
-                  key={key}
-                  data-feat-spec
-                  className="flex items-center justify-between gap-6 py-5"
-                >
-                  <span className="text-xs uppercase tracking-[0.22em] text-bone-400">
-                    {key}
-                  </span>
-                  <span className="font-display text-lg italic text-bone-100 md:text-xl">
-                    {val}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Headline */}
+        <div className="mb-16 md:mb-24 md:max-w-[60ch]">
+          <h2 className="font-display text-[clamp(2.8rem,7vw,5.5rem)] italic leading-[0.90] tracking-tight text-bone-100">
+            Engineered for the{' '}
+            <span className="text-ember-400">one percent</span>
+            <br className="hidden sm:block" /> of the one percent.
+          </h2>
         </div>
 
-        {/* Advantages / accordion */}
-        <div
-          id="expeditions"
-          className="mt-28 border-t border-[var(--line)] pt-12 md:mt-40"
-        >
-          <div className="mb-12 flex items-end justify-between md:mb-16">
-            <div>
-              <p className="eyebrow mb-4">§ 04 — Advantages</p>
-              <h3 className="max-w-[18ch] font-display text-5xl italic leading-[0.95] text-balance md:text-6xl">
-                A better way to{' '}
-                <span className="text-ember-400">fly.</span>
-              </h3>
+        {/* Bento grid */}
+        <div className="grid gap-px bg-[var(--line)] md:grid-cols-12">
+          {FEATURES.map((f, i) => (
+            <div
+              key={i}
+              data-feat-card
+              className={cn(
+                'group relative flex flex-col justify-between overflow-hidden bg-ink-900 p-8 transition-colors duration-500 hover:bg-ink-950 md:p-10',
+                f.wide ? 'md:col-span-8' : 'md:col-span-4',
+                f.accent && 'bg-ember-500/[0.06] hover:bg-ember-500/[0.09]',
+              )}
+            >
+              {/* Top row */}
+              <div className="flex items-start justify-between gap-4">
+                <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-200/40">
+                  {f.index}
+                </span>
+                {/* Subtle arrow — appears on hover */}
+                <svg
+                  viewBox="0 0 16 16"
+                  className="h-4 w-4 shrink-0 translate-x-1 -translate-y-1 text-ember-400 opacity-0 transition-[opacity,transform] duration-300 ease-soft group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden
+                >
+                  <path d="M3 13 L13 3 M6 3 h7 v7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {/* Content */}
+              <div className="mt-12 md:mt-20">
+                <h3
+                  className={cn(
+                    'font-display text-[clamp(1.6rem,3.5vw,2.4rem)] italic leading-[0.95]',
+                    f.accent ? 'text-ember-300' : 'text-bone-100',
+                  )}
+                >
+                  {f.title}
+                </h3>
+                <p className="mt-4 max-w-[38ch] text-[13px] leading-relaxed text-bone-200/70 md:text-sm">
+                  {f.body}
+                </p>
+              </div>
+
+              {/* Bottom corner lines */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-0 right-0 h-4 w-4 opacity-0 transition-opacity duration-400 group-hover:opacity-100"
+              >
+                <span className="absolute bottom-0 right-0 h-px w-full bg-ember-400/50" />
+                <span className="absolute bottom-0 right-0 h-full w-px bg-ember-400/50" />
+              </span>
             </div>
-          </div>
-
-          <ul className="border-t border-[var(--line)]">
-            {FEATURES.map((f, i) => {
-              const open = openIndex === i;
-              return (
-                <li key={f.title} className="border-b border-[var(--line)]">
-                  <button
-                    onClick={() => setOpenIndex(open ? -1 : i)}
-                    aria-expanded={open}
-                    className="group flex w-full items-center justify-between gap-6 py-6 text-left transition-colors duration-300 hover:bg-ink-900/40 md:py-8"
-                  >
-                    <div className="flex items-baseline gap-6">
-                      <span className="font-mono text-xs tabular-nums text-bone-400">
-                        0{i + 1}
-                      </span>
-                      <span className="font-display text-3xl italic text-bone-100 md:text-5xl">
-                        {f.title}
-                      </span>
-                    </div>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] transition-[background,transform] duration-500 ease-soft',
-                        open &&
-                        'rotate-45 bg-ember-500/20 border-ember-500/60',
-                      )}
-                    >
-                      <span className="absolute h-4 w-px bg-bone-100" />
-                      <span className="absolute h-px w-4 bg-bone-100" />
-                    </span>
-                  </button>
-
-                  <div
-                    className={cn(
-                      'grid overflow-hidden transition-[grid-template-rows,opacity] duration-500 ease-soft',
-                      open
-                        ? 'grid-rows-[1fr] opacity-100'
-                        : 'grid-rows-[0fr] opacity-0',
-                    )}
-                  >
-                    <div className="min-h-0">
-                      <div className="grid gap-6 pb-8 md:grid-cols-12 md:pb-10">
-                        <p className="text-sm leading-relaxed text-bone-200/85 md:col-span-12 md:col-start-1 md:text-base">
-                          {f.body}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          ))}
         </div>
       </div>
     </section>
