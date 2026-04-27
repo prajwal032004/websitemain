@@ -1,124 +1,82 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import HeroVideos from '@/components/HeroVideos';
 
-const FrameScrollCanvas = dynamic(
-  () => import('@/components/FrameScrollCanvas'),
-  { ssr: false, loading: () => null },
-);
-const IntroSection = dynamic(
-  () => import('@/components/IntroSection'),
-  { ssr: false, loading: () => null },
-);
-const DesertWindSection = dynamic(
-  () => import('@/components/DesertWindSection'),
-  { ssr: false, loading: () => null },
-);
-const StatsSection = dynamic(
-  () => import('@/components/StatsSection'),
-  { ssr: false, loading: () => null },
-);
-const FeaturesSection = dynamic(
-  () => import('@/components/FeaturesSection'),
-  { ssr: false, loading: () => null },
-);
-const HorizontalShowcase = dynamic(
-  () => import('@/components/HorizontalShowcase'),
-  { ssr: false, loading: () => null },
-);
-const DestinationsMarquee = dynamic(
-  () => import('@/components/DestinationsMarquee'),
-  { ssr: false, loading: () => null },
-);
-const Footer = dynamic(
-  () => import('@/components/Footer'),
-  { ssr: false, loading: () => null },
-);
+const FrameScrollCanvas = dynamic(() => import('@/components/FrameScrollCanvas'), { ssr: false });
+const IntroSection = dynamic(() => import('@/components/IntroSection'), { ssr: false });
+const DesertWindSection = dynamic(() => import('@/components/DesertWindSection'), { ssr: false });
+const StatsSection = dynamic(() => import('@/components/StatsSection'), { ssr: false });
+const FeaturesSection = dynamic(() => import('@/components/FeaturesSection'), { ssr: false });
+const HorizontalShowcase = dynamic(() => import('@/components/HorizontalShowcase'), { ssr: false });
+const DestinationsMarquee = dynamic(() => import('@/components/DestinationsMarquee'), { ssr: false });
+const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 
 export default function HomeShell() {
+  const mainRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
-    let debounceTimer: ReturnType<typeof setTimeout>;
-    const refresh = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => ScrollTrigger.refresh(true), 120);
-    };
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const r = (ms: number) => timers.push(setTimeout(() => ScrollTrigger.refresh(), ms));
 
-    const ro = new ResizeObserver(refresh);
-    ro.observe(document.body);
-    window.addEventListener('load', refresh);
-    document.fonts.ready.then(refresh);
+    // Staggered refresh cascade covers all dynamic import timing windows
+    r(100); r(300); r(600); r(1200); r(2500);
+
+    const onLoad = () => r(50);
+    window.addEventListener('load', onLoad);
+    document.fonts?.ready.then(() => r(50));
+
+    // MutationObserver fires whenever a dynamic chunk mounts a new child
+    // into <main> — guarantees a refresh after every section appears.
+    let moTimer: ReturnType<typeof setTimeout>;
+    const mo = new MutationObserver(() => {
+      clearTimeout(moTimer);
+      moTimer = setTimeout(() => ScrollTrigger.refresh(), 80);
+    });
+    if (mainRef.current) {
+      mo.observe(mainRef.current, { childList: true, subtree: false });
+    }
 
     return () => {
-      clearTimeout(debounceTimer);
-      ro.disconnect();
-      window.removeEventListener('load', refresh);
+      timers.forEach(clearTimeout);
+      clearTimeout(moTimer);
+      mo.disconnect();
+      window.removeEventListener('load', onLoad);
+      ScrollTrigger.getAll().forEach((t) => t.kill());
     };
   }, []);
 
-  // ─── Z-INDEX STRATEGY FOR GSAP PIN ───────────────────────────────────────
+  // ─── LAYOUT RULES — DO NOT VIOLATE ────────────────────────────────────────
   //
-  // When GSAP pins HorizontalShowcase it switches the <section> to
-  // `position: fixed`. A fixed element escapes normal flow and competes
-  // with every OTHER stacking context on the page for paint order.
+  // <main> and every direct section child MUST have:
+  //   • NO `position` other than the default (static)  — or if needed, only
+  //     `position: relative` WITHOUT any z-index
+  //   • NO `transform` / `will-change: transform` at this level
+  //   • NO `filter`, `isolation`, `contain` properties
   //
-  // Every section with `position: relative` on its root IS a stacking
-  // context. Without deliberate z-index values the browser paints them
-  // in DOM order — sections that appear LATER in the DOM paint ON TOP of
-  // earlier ones, including the fixed showcase. That's why DesertWind,
-  // Stats and Features were appearing in front of (or behind) the pin.
+  // Any of these creates a CSS "containing block" that captures
+  // `position: fixed` children. GSAP pins work by setting `position: fixed`
+  // on the pinned element — if a containing block intercepts it, the element
+  // is pinned relative to that block (wrong) instead of the viewport (correct).
   //
-  // Three-layer z-index contract:
-  //
-  //   z 1  — sections ABOVE the showcase in the DOM.
-  //           (FrameScrollCanvas → FeaturesSection)
-  //           These scroll upward and out of view. They must NOT paint
-  //           over the pinned showcase that appears below them in the DOM.
-  //
-  //   z 2  — the HorizontalShowcase itself (set inside that component).
-  //           Sits above layer 1 while pinned. No wrapper here because
-  //           any positioned ancestor would intercept `position:fixed`
-  //           and re-anchor it to that ancestor instead of the viewport.
-  //
-  //   z 3  — sections BELOW the showcase in the DOM.
-  //           (DestinationsMarquee, Footer)
-  //           These scroll UP over the pinned showcase once the pin
-  //           releases. They must paint on TOP of the pinned layer.
-  //
-  // `isolation: isolate` on each group creates a self-contained stacking
-  // context so children's internal z-indexes don't leak out and interfere
-  // with the showcase's z-index.
-  //
-  // CRITICAL: <main> must have NO `position` set. A positioned <main>
-  // becomes the containing block for `position:fixed` children, so the
-  // pinned section would be fixed relative to <main> (scrolls with page)
-  // instead of the true viewport.
-
+  // Safe z-index layering: use it only on elements INSIDE a section
+  // (overlays, chips, progress bars) — never on the section root itself.
+  // ──────────────────────────────────────────────────────────────────────────
   return (
-    <main className="bg-ink-950">
-
-      {/* ── Layer 1: sections that scroll away ABOVE the pin ── */}
-      <div style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
-        <FrameScrollCanvas />
-        <HeroVideos />
-        <IntroSection />
-        <DesertWindSection />
-        <StatsSection />
-        <FeaturesSection />
-      </div>
-
-      <HorizontalShowcase />
-
-      <div style={{ position: 'relative', zIndex: 3, isolation: 'isolate' }}>
-        <DestinationsMarquee />
-        <Footer />
-      </div>
-
+    <main ref={mainRef} className="bg-ink-950">
+      <FrameScrollCanvas />
+      <HeroVideos />
+      <IntroSection />
+      <DesertWindSection />
+      <StatsSection />
+      <FeaturesSection />
+      <DestinationsMarquee />
+      <Footer />
     </main>
   );
 }

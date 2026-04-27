@@ -9,7 +9,6 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
-    // Respect the user's reduced-motion preference — skip Lenis entirely.
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -20,7 +19,7 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
 
     const lenis = new Lenis({
       duration: 1.15,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // expo.out-ish
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 1.4,
@@ -29,32 +28,57 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
 
     lenisRef.current = lenis;
 
-    // Drive Lenis from GSAP's ticker so ScrollTrigger and Lenis stay in perfect sync.
-    const update = (time: number) => {
-      lenis.raf(time * 1000);
-    };
+    // ── CRITICAL: tell ScrollTrigger to use Lenis for scroll measurements ──
+    //
+    // Without scrollerProxy, ScrollTrigger reads window.scrollY (native),
+    // but Lenis intercepts wheel events and updates its own virtual scroll
+    // position — the two values diverge during smooth scrolling. This causes
+    // ScrollTrigger to fire pin/unpin at the wrong scroll positions, which
+    // looks like sections overlapping.
+    //
+    // scrollerProxy makes ScrollTrigger ask Lenis for the scroll position
+    // and the element's bounding rect, so both systems always agree.
+    // ──────────────────────────────────────────────────────────────────────
+    ScrollTrigger.scrollerProxy(document.body, {
+      scrollTop(value) {
+        if (arguments.length && value !== undefined) {
+          lenis.scrollTo(value, { immediate: true });
+        }
+        return lenis.scroll;
+      },
+      getBoundingClientRect() {
+        return {
+          top: 0,
+          left: 0,
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+      },
+      // Required: tells GSAP this scroller uses CSS transforms (Lenis does)
+      pinType: document.body.style.transform ? 'transform' : 'fixed',
+    });
+
+    // Drive Lenis from GSAP ticker so they stay frame-locked
+    const update = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(update);
     gsap.ticker.lagSmoothing(0);
 
-    // Each Lenis scroll event refreshes ScrollTrigger's measurements instantly.
+    // Each Lenis scroll tick → refresh ScrollTrigger's internal scroll state
     lenis.on('scroll', ScrollTrigger.update);
 
-    // CRITICAL FIX: Next.js dynamic imports cause elements to pop in at different times.
-    // This debounced ResizeObserver ensures GSAP recalculates all trigger positions
-    // once the DOM settles, preventing pinned sections from overlapping earlier content.
-    let timeoutId: NodeJS.Timeout;
+    // ResizeObserver: debounced refresh when body height changes (dynamic imports)
+    let resizeTimer: ReturnType<typeof setTimeout>;
     const ro = new ResizeObserver(() => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        ScrollTrigger.refresh();
-      }, 250);
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => ScrollTrigger.refresh(), 200);
     });
     ro.observe(document.body);
 
     return () => {
-      clearTimeout(timeoutId);
+      clearTimeout(resizeTimer);
       ro.disconnect();
       gsap.ticker.remove(update);
+      ScrollTrigger.scrollerProxy(document.body, undefined as never); // remove proxy
       lenis.destroy();
       lenisRef.current = null;
     };
