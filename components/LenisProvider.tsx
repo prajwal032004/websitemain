@@ -39,7 +39,21 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
     // Each Lenis scroll event refreshes ScrollTrigger's measurements instantly.
     lenis.on('scroll', ScrollTrigger.update);
 
+    // CRITICAL FIX: Next.js dynamic imports cause elements to pop in at different times.
+    // This debounced ResizeObserver ensures GSAP recalculates all trigger positions
+    // once the DOM settles, preventing pinned sections from overlapping earlier content.
+    let timeoutId: NodeJS.Timeout;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 250);
+    });
+    ro.observe(document.body);
+
     return () => {
+      clearTimeout(timeoutId);
+      ro.disconnect();
       gsap.ticker.remove(update);
       lenis.destroy();
       lenisRef.current = null;

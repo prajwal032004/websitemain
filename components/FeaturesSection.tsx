@@ -38,6 +38,14 @@ export default function FeaturesSection() {
   const ref = useRef<HTMLElement | null>(null);
   const [openIndex, setOpenIndex] = useState(0);
 
+  // When accordion height changes, we must inform GSAP so that subsequent pinned sections (like HorizontalShowcase) update their trigger positions.
+  useGsap(() => {
+    const timeoutId = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 550); // wait for the duration-500 transition to finish
+    return () => clearTimeout(timeoutId);
+  }, [openIndex]);
+
   useGsap(
     () => {
       gsap.registerPlugin(ScrollTrigger);
