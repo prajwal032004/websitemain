@@ -112,12 +112,8 @@ export default function HomeShell() {
         <FeaturesSection />
       </div>
 
+      <HorizontalShowcase />
 
-
-      {/* ── Layer 3: sections that scroll OVER the pin ──────────────────────
-          Must be z-index: 3 so they paint on top of the pinned section
-          (z-index: 2) as they scroll up into the viewport after the pin
-          releases.                                                          */}
       <div style={{ position: 'relative', zIndex: 3, isolation: 'isolate' }}>
         <DestinationsMarquee />
         <Footer />
