@@ -6,7 +6,6 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useGsap } from '@/hooks/useGsap';
-import { cn } from '@/utils/cn';
 import { framePath } from '@/utils/frames';
 
 const FILMS = [
@@ -18,42 +17,84 @@ const FILMS = [
 ];
 
 export default function HorizontalShowcase() {
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  // ── Single ref: trigger === pin === this element ──────────────────────────
+  // Root cause of the DesertWind overlap: the previous version had a wrapper
+  // <div> as the trigger and the inner <section> as the pin target. GSAP
+  // measures the scroll budget from the trigger and injects a spacer *after*
+  // the pinned element. When they differ, the spacer lands in the wrong DOM
+  // position → sections above (DesertWind) lose their reserved height → they
+  // appear to overlap with the pinned showcase.
+  //
+  // Fix: one element serves as both trigger and pin. GSAP then inserts the
+  // spacer immediately after it, correctly pushing DestinationsMarquee down.
+  const sectionRef = useRef<HTMLElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   useGsap(() => {
     gsap.registerPlugin(ScrollTrigger);
 
+    const section = sectionRef.current;
     const track = trackRef.current;
-    const wrapper = wrapperRef.current;
-    if (!track || !wrapper) return;
+    if (!section || !track) return;
 
+    // Lazy getter — GSAP re-calls this on every invalidateOnRefresh so the
+    // value is always current after resize or accordion reflow.
     const getScrollAmount = () => track.scrollWidth - window.innerWidth;
 
-    gsap.to(track, {
+    const tween = gsap.to(track, {
       x: () => -getScrollAmount(),
       ease: 'none',
-      scrollTrigger: {
-        trigger: wrapper,
-        start: 'top top',
-        end: () => `+=${getScrollAmount()}`,
-        scrub: 1,
-        pin: true,
-        pinSpacing: true,
-        invalidateOnRefresh: true,
-      },
     });
 
-  }, [], wrapperRef);
+    const st = ScrollTrigger.create({
+      animation: tween,
+      trigger: section,   // ← same element
+      pin: section,       // ← same element
+      start: 'top top',
+      end: () => `+=${getScrollAmount()}`,
+      scrub: 1,
+      pinSpacing: true,   // GSAP reserves vertical space after the section
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
+      fastScrollEnd: true,
+    });
+
+    // Refresh when track width changes (accordion open, resize, font load).
+    let roTimer: ReturnType<typeof setTimeout>;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(roTimer);
+      roTimer = setTimeout(() => ScrollTrigger.refresh(), 80);
+    });
+    ro.observe(track);
+
+    return () => {
+      clearTimeout(roTimer);
+      ro.disconnect();
+      st.kill();
+      tween.kill();
+    };
+  }, [], sectionRef);
 
   return (
-    <div ref={wrapperRef}>
-      <section className="relative h-[100svh] w-full overflow-hidden bg-ink-950 border-t border-[var(--line)]">
-        <div className="absolute top-12 left-6 md:left-12 z-10 flex items-baseline gap-6">
-          <span className="eyebrow text-bone-100/40">§ Archive</span>
-          <span className="eyebrow text-bone-100/70 hidden md:inline-block">Drag laterally — or scroll</span>
-        </div>
+    // No outer wrapper div. overflow-hidden is on the inner absolute div,
+    // NOT on the section — if the section itself clips overflow, it also
+    // clips the GSAP spacer that GSAP appends as a sibling, breaking height.
+    <section
+      ref={sectionRef}
+      id="archive"
+      className="relative h-[100svh] w-full bg-ink-950 border-t border-[var(--line)]"
+    >
+      {/* Section label */}
+      <div className="absolute top-12 left-6 md:left-12 z-10 flex items-baseline gap-6 pointer-events-none">
+        <span className="eyebrow text-bone-100/40">§ Archive</span>
+        <span className="eyebrow text-bone-100/70 hidden md:inline-block">
+          Scroll to browse
+        </span>
+      </div>
 
+      {/* overflow-hidden here clips cards visually without touching the
+          GSAP spacer, which lives outside this absolute container.      */}
+      <div className="absolute inset-0 overflow-hidden">
         <div
           ref={trackRef}
           className="flex w-max items-center h-full pl-[10vw] gap-8 md:gap-16 will-change-transform"
@@ -64,8 +105,8 @@ export default function HorizontalShowcase() {
               The <span className="italic text-bone-400">archive</span>
             </h2>
             <p className="mt-6 text-bone-200/85 max-w-md leading-relaxed text-base md:text-lg">
-              A traveling exhibition of stills from missions that exist only because we made them.
-              Scroll right to walk through it.
+              A traveling exhibition of stills from missions that exist only
+              because we made them. Scroll right to walk through it.
             </p>
           </div>
 
@@ -74,39 +115,46 @@ export default function HorizontalShowcase() {
             <Link
               key={film.slug}
               href={`/#${film.slug}`}
-              className="group flex-shrink-0 w-[75vw] md:w-[32vw] aspect-[3/4] relative overflow-hidden bg-ink-900 ring-1 ring-[var(--line)] transition-all duration-500 hover:ring-ember-500/40"
+              className="group flex-shrink-0 w-[75vw] md:w-[32vw] aspect-[3/4] relative overflow-hidden bg-ink-900 ring-1 ring-[var(--line)] rounded-lg transition-all duration-500 hover:ring-ember-500/40"
             >
               {film.poster ? (
-                <Image 
-                  src={film.poster} 
-                  alt={film.title} 
-                  fill 
+                <Image
+                  src={film.poster}
+                  alt={film.title}
+                  fill
                   sizes="(min-width: 768px) 32vw, 75vw"
-                  className="object-cover transition-transform duration-[1400ms] ease-soft group-hover:scale-[1.06]" 
+                  loading="eager"
+                  className="object-cover transition-transform duration-[1400ms] ease-soft group-hover:scale-[1.06]"
                 />
               ) : (
                 <div className="w-full h-full bg-ink-800" />
               )}
-              
-              {/* Readability gradient */}
+
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/20 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
-              
+
               <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
-                <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-100/80">N° 0{i + 1}</span>
-                <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-100/80">{film.year}</span>
+                <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-100/80">
+                  N° 0{i + 1}
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-100/80">
+                  {film.year}
+                </span>
               </div>
-              
+
               <div className="absolute bottom-6 left-6 right-6 md:bottom-8 md:left-8 md:right-8">
-                <h3 className="font-display text-3xl md:text-4xl text-bone-100 italic leading-[0.95]">{film.title}</h3>
-                <p className="mt-3 font-mono text-[11px] uppercase tracking-superwide text-bone-400">{film.category}</p>
+                <h3 className="font-display text-3xl md:text-4xl text-bone-100 italic leading-[0.95]">
+                  {film.title}
+                </h3>
+                <p className="mt-3 font-mono text-[11px] uppercase tracking-superwide text-bone-400">
+                  {film.category}
+                </p>
               </div>
             </Link>
           ))}
 
-          {/* End spacer */}
-          <div className="flex-shrink-0 w-[20vw]" />
+          <div className="flex-shrink-0 w-[15vw]" />
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }

@@ -49,6 +49,7 @@ export default function StatsSection() {
       gsap.utils.toArray<HTMLElement>('[data-stat]').forEach((el) => {
         const target = parseFloat(el.dataset.value ?? '0');
         const countObj = { v: 0 };
+
         gsap.to(countObj, {
           v: target,
           duration: 2,
@@ -110,7 +111,9 @@ export default function StatsSection() {
                 <span data-stat data-value={s.value}>
                   0
                 </span>
-                {s.suffix ? <span className="text-bone-400">{s.suffix}</span> : null}
+                {s.suffix ? (
+                  <span className="text-bone-400">{s.suffix}</span>
+                ) : null}
               </div>
 
               <p className="mt-auto max-w-[26ch] text-sm leading-relaxed text-bone-200/70">

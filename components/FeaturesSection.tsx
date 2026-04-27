@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGsap } from '@/hooks/useGsap';
@@ -38,12 +38,16 @@ export default function FeaturesSection() {
   const ref = useRef<HTMLElement | null>(null);
   const [openIndex, setOpenIndex] = useState(0);
 
-  // When accordion height changes, we must inform GSAP so that subsequent pinned sections (like HorizontalShowcase) update their trigger positions.
-  useGsap(() => {
-    const timeoutId = setTimeout(() => {
+  // ── Refresh ScrollTrigger after accordion animation completes ──────────────
+  // Using plain useEffect (NOT useGsap) so we don't re-run the GSAP context.
+  // The 520ms delay ensures the CSS transition (duration-500) fully settles
+  // before GSAP recalculates all trigger offsets — preventing the jitter that
+  // occurs when HorizontalShowcase's pinned trigger fires mid-animation.
+  useEffect(() => {
+    const id = setTimeout(() => {
       ScrollTrigger.refresh();
-    }, 550); // wait for the duration-500 transition to finish
-    return () => clearTimeout(timeoutId);
+    }, 520);
+    return () => clearTimeout(id);
   }, [openIndex]);
 
   useGsap(
@@ -98,7 +102,8 @@ export default function FeaturesSection() {
           <div>
             <p className="eyebrow mb-4">§ 03 — Aircraft</p>
             <h2 className="max-w-[18ch] font-display text-6xl italic leading-[0.95] text-balance md:text-7xl">
-              A single airframe. Kept <span className="text-ember-400">ready</span>.
+              A single airframe. Kept{' '}
+              <span className="text-ember-400">ready</span>.
             </h2>
           </div>
           <p className="hidden max-w-[28ch] text-right text-sm leading-relaxed text-bone-200/70 md:block">
@@ -109,7 +114,7 @@ export default function FeaturesSection() {
         </div>
 
         <div className="grid gap-12 md:grid-cols-12">
-          {/* Aircraft image — uses a tinted poster as a stand-in */}
+          {/* Aircraft image */}
           <div className="md:col-span-7">
             <div
               data-feat-image
@@ -133,7 +138,8 @@ export default function FeaturesSection() {
                 </div>
                 <div className="flex items-end justify-between">
                   <div className="font-display text-3xl italic text-bone-100 md:text-5xl">
-                    Gulfstream <span className="text-ember-400">650ER</span>
+                    Gulfstream{' '}
+                    <span className="text-ember-400">650ER</span>
                   </div>
                   <div className="hidden font-mono text-[10px] uppercase tracking-superwide text-bone-100/70 md:block">
                     Ready — Geneva, 04:12 UTC
@@ -168,12 +174,16 @@ export default function FeaturesSection() {
         </div>
 
         {/* Advantages / accordion */}
-        <div id="expeditions" className="mt-28 border-t border-[var(--line)] pt-12 md:mt-40">
+        <div
+          id="expeditions"
+          className="mt-28 border-t border-[var(--line)] pt-12 md:mt-40"
+        >
           <div className="mb-12 flex items-end justify-between md:mb-16">
             <div>
               <p className="eyebrow mb-4">§ 04 — Advantages</p>
               <h3 className="max-w-[18ch] font-display text-5xl italic leading-[0.95] text-balance md:text-6xl">
-                A better way to <span className="text-ember-400">fly.</span>
+                A better way to{' '}
+                <span className="text-ember-400">fly.</span>
               </h3>
             </div>
           </div>
@@ -200,7 +210,8 @@ export default function FeaturesSection() {
                       aria-hidden
                       className={cn(
                         'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] transition-[background,transform] duration-500 ease-soft',
-                        open && 'rotate-45 bg-ember-500/20 border-ember-500/60',
+                        open &&
+                        'rotate-45 bg-ember-500/20 border-ember-500/60',
                       )}
                     >
                       <span className="absolute h-4 w-px bg-bone-100" />
@@ -211,12 +222,14 @@ export default function FeaturesSection() {
                   <div
                     className={cn(
                       'grid overflow-hidden transition-[grid-template-rows,opacity] duration-500 ease-soft',
-                      open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                      open
+                        ? 'grid-rows-[1fr] opacity-100'
+                        : 'grid-rows-[0fr] opacity-0',
                     )}
                   >
                     <div className="min-h-0">
-                     <div className="grid gap-6 pb-8 md:grid-cols-12 md:pb-10">
-                       <p className="text-sm leading-relaxed text-bone-200/85 md:col-span-12 md:col-start-1 md:text-base">
+                      <div className="grid gap-6 pb-8 md:grid-cols-12 md:pb-10">
+                        <p className="text-sm leading-relaxed text-bone-200/85 md:col-span-12 md:col-start-1 md:text-base">
                           {f.body}
                         </p>
                       </div>
