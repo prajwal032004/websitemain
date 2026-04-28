@@ -1,14 +1,20 @@
-import ServicesSection from '@/components/ServicesSection';
+import type { Metadata } from 'next';
+import dynamic from 'next/dynamic';
+import ServicesShell from '@/components/services/ServicesShell';
 
-export const metadata = {
-  title: 'Services | Meridian Journeys',
-  description: 'The full spectrum of luxury travel and expedition services provided by Meridian.',
+export const metadata: Metadata = {
+  title: 'Services',
+  description:
+    'Five disciplines, one operating philosophy. Private charter, bespoke expeditions, cargo, concierge, and membership — handled by eleven people who answer their phones.',
 };
+
+const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 
 export default function ServicesPage() {
   return (
-    <main className="bg-ink-950">
-      <ServicesSection />
+    <main className="relative">
+      <ServicesShell />
+      <Footer />
     </main>
   );
 }

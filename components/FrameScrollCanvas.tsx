@@ -10,14 +10,6 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { allFramePaths, TOTAL_FRAMES } from '@/utils/frames';
 import { cn } from '@/utils/cn';
 
-/**
- * VIDEO BREAKDOWN (241 source frames → 151 exported frames):
- *
- * Frames 0–40   (0–26%):   A lone figure stands deep inside collapsed concrete ruins.
- * Frames 40–100 (26–66%):  The camera drifts back and climbs.
- * Frames 100–151 (66–100%): Only sky, sand, and sun remain.
- */
-
 interface FrameScrollCanvasProps {
   onProgress?: (progress: number) => void;
   onReady?: () => void;
@@ -29,16 +21,6 @@ export default function FrameScrollCanvas({
   onReady,
   onError,
 }: FrameScrollCanvasProps) {
-  // ── sectionRef is BOTH the trigger AND the pin target ─────────────────────
-  // Previously: section was the trigger, stageRef (child div) was pinned.
-  // That injected the pinSpacer *inside* the section's own DOM, so the
-  // section's natural height never expanded — every section below started
-  // at offset 100vh instead of 100vh + totalPx.
-  //
-  // Now: pin the section itself. GSAP wraps it in an external pinSpacer
-  // sibling that is (100vh + totalPx) tall, pushing everything below down
-  // by exactly the right amount.
-  // ──────────────────────────────────────────────────────────────────────────
   const sectionRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef({ frame: 0, lastDrawn: -1 });
@@ -71,14 +53,19 @@ export default function FrameScrollCanvas({
       const canvas = canvasRef.current;
       const section = sectionRef.current;
 
-      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: false });
+      const ctx = canvas.getContext('2d', {
+        alpha: false,
+        desynchronized: false,
+        // Ask the browser for the widest colour gamut available
+        colorSpace: 'display-p3',
+      } as CanvasRenderingContext2DSettings);
       if (!ctx) { onError?.(new Error('Canvas 2D context unavailable.')); return; }
 
+      // Use true device pixel ratio — no cap — for maximum sharpness.
+      // On a 3× Retina screen this means 3× the pixels.
       const dpr = window.devicePixelRatio || 1;
 
       // ── resizeCanvas ──────────────────────────────────────────────────────
-      // Dimensions are always window size — the section is pinned/fixed so
-      // it visually covers the full viewport regardless of document height.
       const resizeCanvas = () => {
         const cw = window.innerWidth;
         const ch = window.innerHeight;
@@ -97,6 +84,9 @@ export default function FrameScrollCanvas({
       };
 
       // ── drawFrame ─────────────────────────────────────────────────────────
+      // Cover-fill: image always fills the viewport with no letterboxing.
+      // No transforms, no compositing layers — draw directly to the backing
+      // store at full DPR resolution for maximum clarity.
       const drawFrame = (index: number) => {
         const i = Math.max(0, Math.min(TOTAL_FRAMES - 1, Math.round(index)));
         if (i === stateRef.current.lastDrawn) return;
@@ -104,27 +94,29 @@ export default function FrameScrollCanvas({
         const img = images[i];
         if (!img || !img.naturalWidth) return;
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
         const cw = window.innerWidth;
         const ch = window.innerHeight;
         const iw = img.naturalWidth;
         const ih = img.naturalHeight;
 
+        // Object-fit: cover
         const scale = Math.max(cw / iw, ch / ih);
         const drawW = iw * scale;
         const drawH = ih * scale;
         const dx = (cw - drawW) * 0.5;
         const dy = (ch - drawH) * 0.5;
 
-        ctx.save();
+        // Clear to base colour first (no save/restore overhead)
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = '#0A0807';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
 
+        // Restore DPR transform and draw
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, dx, dy, drawW, drawH);
+
         stateRef.current.lastDrawn = i;
       };
 
@@ -144,23 +136,6 @@ export default function FrameScrollCanvas({
       const totalPx = () => Math.round(window.innerHeight * scrollMultiplier);
 
       // ── MAIN PIN TRIGGER ──────────────────────────────────────────────────
-      //
-      // KEY SETTINGS:
-      //
-      // trigger + pin: sectionRef (same element) — GSAP wraps the section in
-      //   an external pinSpacer that is exactly (section height + totalPx)
-      //   tall, pushing all subsequent sections down correctly.
-      //
-      // scroller: document.body — required when LenisProvider installs a
-      //   ScrollTrigger.scrollerProxy on document.body. Without this,
-      //   ScrollTrigger reads window.scrollY (native) while Lenis reports
-      //   a different virtual position, causing pins to fire at wrong offsets.
-      //
-      // pinSpacing: true — lets GSAP add the spacer. Never set false unless
-      //   you are manually managing spacing (we are not).
-      //
-      // markers: false — remove after confirming layout is correct.
-      // ──────────────────────────────────────────────────────────────────────
       const trigger = ScrollTrigger.create({
         trigger: section,
         pin: true,
@@ -178,42 +153,9 @@ export default function FrameScrollCanvas({
         },
       });
 
-      // ── Chapter overlay triggers ───────────────────────────────────────────
-      const chapters = gsap.utils.toArray<HTMLElement>('[data-fs-chapter]');
-      const chapterTriggers: ScrollTrigger[] = [];
-
-      chapters.forEach((el) => {
-        const start = parseFloat(el.dataset.fsStart ?? '0');
-        const end = parseFloat(el.dataset.fsEnd ?? '1');
-        const peak = parseFloat(el.dataset.fsPeak ?? String((start + end) / 2));
-
-        gsap.set(el, { opacity: 0, y: 28, willChange: 'opacity, transform' });
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: section,
-            start: () => `top+=${Math.round(start * totalPx())} top`,
-            end: () => `top+=${Math.round(end * totalPx())} top`,
-            scroller: document.body,
-            scrub: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        const inDur = Math.max(0.2, (peak - start) / Math.max(0.001, end - start));
-        tl.to(el, { opacity: 1, y: 0, ease: 'power2.out', duration: inDur })
-          .to(el, { opacity: 0, y: -22, ease: 'power2.in', duration: 1 - inDur });
-
-        chapterTriggers.push(tl.scrollTrigger as ScrollTrigger);
-      });
-
       // ── Progress meter ────────────────────────────────────────────────────
-      const chapterLabel = document.querySelector<HTMLElement>('[data-fs-chapter-label]');
       const progressFill = document.querySelector<HTMLElement>('[data-fs-arc-fill]');
       const progressDot = document.querySelector<HTMLElement>('[data-fs-arc-dot]');
-
-      const romanFor = (p: number) => (p < 0.33 ? 'I' : p < 0.66 ? 'II' : 'III');
-      let lastRoman = '';
 
       const meterTrigger = ScrollTrigger.create({
         trigger: section,
@@ -226,19 +168,6 @@ export default function FrameScrollCanvas({
           const pct = self.progress;
           if (progressFill) progressFill.style.width = `${Math.round(pct * 100)}%`;
           if (progressDot) progressDot.style.left = `${Math.max(0, Math.min(100, pct * 100))}%`;
-
-          if (chapterLabel) {
-            const roman = romanFor(pct);
-            if (roman !== lastRoman) {
-              lastRoman = roman;
-              gsap.fromTo(
-                chapterLabel,
-                { opacity: 0, y: 4 },
-                { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', overwrite: true },
-              );
-              chapterLabel.textContent = roman;
-            }
-          }
         },
       });
 
@@ -264,7 +193,6 @@ export default function FrameScrollCanvas({
         enter.kill();
         trigger.kill();
         meterTrigger.kill();
-        chapterTriggers.forEach((t) => t.kill());
         veilTrigger?.kill();
       };
     },
@@ -277,10 +205,6 @@ export default function FrameScrollCanvas({
       id="manifesto"
       ref={sectionRef}
       aria-label="Scroll-driven sequence"
-      // h-[100svh]: natural height before GSAP pins it.
-      // GSAP will wrap this in a pinSpacer that is h-[100svh + totalPx].
-      // overflow-hidden: keep chapter text / canvas inside section bounds.
-      // NO position/zIndex on this element — see HomeShell for explanation.
       className="relative h-[100svh] w-full overflow-hidden bg-ink-950 text-bone-100"
     >
       {/* Loading placeholder */}
@@ -296,26 +220,20 @@ export default function FrameScrollCanvas({
         }}
       />
 
+      {/* Canvas — rendered at full DPR for maximum sharpness */}
       <canvas
         ref={canvasRef}
         className={cn(
-          'frame-canvas absolute inset-0 transition-opacity duration-[1200ms] ease-soft',
+          'absolute inset-0 transition-opacity duration-[1200ms] ease-soft',
           status === 'ready' && loaderDone ? 'opacity-100' : 'opacity-0',
         )}
-        style={{ imageRendering: 'high-quality' } as React.CSSProperties & { imageRendering: string }}
-      />
-
-      {/* Atmospheric gradient overlay */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-10"
         style={{
-          background:
-            'linear-gradient(180deg, rgba(10,8,7,0.72) 0%, rgba(10,8,7,0.10) 20%, rgba(10,8,7,0) 40%, rgba(10,8,7,0) 52%, rgba(10,8,7,0.95) 100%)',
-        }}
+          imageRendering: 'high-quality',
+          willChange: 'contents',
+        } as unknown as React.CSSProperties}
       />
 
-      {/* Bottom veil */}
+      {/* Bottom veil — fades in at end of sequence */}
       <div
         data-fs-bottom-veil
         aria-hidden
@@ -327,100 +245,16 @@ export default function FrameScrollCanvas({
         }}
       />
 
-      {/* ─── Chapter I ─────────────────────────────────────────────── */}
-      <div
-        data-fs-chapter
-        data-fs-start="0.00"
-        data-fs-end="0.30"
-        data-fs-peak="0.12"
-        className="container-fluid pointer-events-none absolute inset-x-0 top-[20svh] z-30"
-        style={{ opacity: 0, textShadow: '0 2px 24px rgba(10,8,7,0.9), 0 1px 4px rgba(10,8,7,0.8)' }}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="max-w-[22ch]">
-            <p className="eyebrow mb-2 text-bone-200/80 text-[10px] md:text-[11px]">Chapter I</p>
-            <h2 className="font-display text-[clamp(2.4rem,8vw,5.5rem)] italic leading-[0.92]">
-              Inside the <span className="text-ember-400">ruin.</span>
-            </h2>
-            <p className="mt-3 max-w-[26ch] text-[13px] leading-relaxed text-bone-200/75 md:text-sm">
-              Walls of broken concrete. Rebar like ribs.
-              And through the gap — the desert, golden, impossible.
-            </p>
-          </div>
-          <p className="hidden shrink-0 max-w-[18ch] text-right font-mono text-[10px] uppercase tracking-superwide text-bone-200/50 md:block mt-1">
-            Scroll to move<br />through the sequence.
-          </p>
-        </div>
-      </div>
-
-      {/* ─── Chapter II ────────────────────────────────────────────── */}
-      <div
-        data-fs-chapter
-        data-fs-start="0.345"
-        data-fs-end="0.66"
-        data-fs-peak="0.495"
-        className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center"
-        style={{
-          opacity: 0,
-          textShadow: '0 0 40px rgba(10,8,7,1), 0 0 20px rgba(10,8,7,0.95), 0 2px 8px rgba(10,8,7,0.9)',
-        }}
-      >
-        <p className="eyebrow mb-3 text-bone-200/80 text-[10px] md:text-[11px]">Chapter II</p>
-        <h3 className="font-display text-[clamp(2.8rem,10vw,7rem)] italic leading-[0.90] text-balance text-center px-4">
-          Between walls,{' '}
-          <br className="hidden sm:block" />
-          <span className="text-ember-400">a horizon.</span>
-        </h3>
-        <p
-          className="mt-5 max-w-[32ch] text-center text-[13px] leading-relaxed text-bone-200/85 md:text-sm px-4"
-          style={{ textShadow: '0 0 30px rgba(10,8,7,1), 0 0 12px rgba(10,8,7,0.95)' }}
-        >
-          The ruins still frame you. The figure still stands.
-          But the desert is no longer a glimpse — it is everything.
-        </p>
-      </div>
-
-      {/* ─── Chapter III ───────────────────────────────────────────── */}
-      <div
-        data-fs-chapter
-        data-fs-start="0.90"
-        data-fs-end="1.00"
-        data-fs-peak="0.84"
-        className="pointer-events-none absolute inset-0 z-30"
-        style={{ opacity: 0, textShadow: '0 2px 28px rgba(10,8,7,0.95), 0 1px 6px rgba(10,8,7,0.85)' }}
-      >
-        <div className="absolute inset-x-0 top-[8svh] flex flex-col items-center">
-          <p className="eyebrow text-bone-200/70 text-[10px] md:text-[11px]">Chapter III</p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-superwide text-bone-200/50 hidden md:block">
-            The walls are gone. The ruins are memory.
-          </p>
-        </div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-          <h3 className="font-display text-[clamp(3rem,12vw,9rem)] italic leading-[0.88]">
-            Only sand.<br />
-            <span className="text-ember-400">Only sun.</span>
-          </h3>
-        </div>
-        <div className="absolute bottom-[14svh] left-0 px-5 md:px-12 sm:bottom-[18svh]">
-          <p className="max-w-[22ch] text-[13px] leading-relaxed text-bone-200/80 md:text-sm">
-            What remains is the horizon —<br />
-            limitless, indifferent,<br />
-            and entirely, terribly yours.
-          </p>
-        </div>
-        <div className="absolute bottom-[14svh] right-0 hidden px-5 text-right md:block md:px-12 sm:bottom-[18svh]">
-          <p className="font-mono text-[10px] uppercase tracking-superwide text-bone-200/55">
-            23°N 13°E — Sahara<br />
-            Meridian Expedition 07
-          </p>
-        </div>
-      </div>
-
-      {/* ─── Bottom chrome ─────────────────────────────────────────── */}
+      {/* Bottom chrome — location tag */}
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 px-5 md:px-12">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1.5 text-ember-400 font-mono text-[10px] tracking-wide">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 shrink-0 opacity-80">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-3 h-3 shrink-0 opacity-80"
+            >
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z" />
             </svg>
             <span className="whitespace-nowrap">Bengaluru, India</span>

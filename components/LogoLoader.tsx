@@ -2,255 +2,263 @@
 
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import Logo from './Logo';
 import { markLoaderComplete, isLoaderComplete } from '@/utils/loader-state';
-import { cn } from '@/utils/cn';
-
-/** How long the logo sits centered before beginning the FLIP, in ms. */
-const HOLD_BEFORE_FLIP_MS = 900;
 
 /**
- * LogoLoader
- * ----------
- * A centered Meridian mark that briefly holds, then FLIPs into the navbar's
- * `[data-logo-target]` element. The target is the *real* navbar logo — always
- * visible, always in the DOM — so when this component unmounts after the FLIP
- * completes, there is no visible gap or fade: the flying logo arrives exactly
- * on top of the navbar logo, the curtain lifts above them, and whatever remains
- * after unmount IS the navbar logo. Zero flicker.
+ * LogoLoader — Synkyn Studios edition
+ * ────────────────────────────────────
+ * Timeline (~4.0s total):
  *
- * Reliability fixes vs prior versions
- * -----------------------------------
- *  - `await document.fonts.ready` before measuring → stable bounding rects.
- *  - Two rAFs after font ready → ensures layout + paint have committed.
- *  - The curtain lift finishes AFTER the logo arrives at target, not before.
- *  - If the target can't be found for any reason, we fall back to a clean fade.
+ *   0.00s  — Black screen appears (instant)
+ *   0.10s  — Eyebrow line fades in
+ *   0.25s  — Logo image scales+fades in with a slight blur clear
+ *   0.40s  — Counter 000→100 (ease-out-cubic, 2.1s)
+ *   2.50s  — Counter reaches 100, brief hold
+ *   2.52s  — Logo glitch flicker
+ *   2.72s  — Eyebrow + counter fade out (logo stays visible!)
+ *   2.85s  — Vertical curtain split: top half → ↑, bottom half → ↓  (1.0s)
+ *   3.00s  — Logo PNG rockets from center → navbar logo position (0.85s)
+ *   3.85s  — Logo arrives; navbar logo fades in (via CSS class toggle)
+ *   4.00s  — markLoaderComplete() fires, component removes from DOM
+ *
+ * The logo element is NOT faded out with the brand — it stays visible and
+ * travels to the navbar using a FLIP-style GSAP transform. The navbar watches
+ * for the [data-nav-logo-ready] attribute on <html> to trigger its own reveal.
  */
 export default function LogoLoader() {
-  const [state, setState] = useState<'entering' | 'holding' | 'flying' | 'done'>(
-    () => (isLoaderComplete() ? 'done' : 'entering'),
-  );
+  const [done, setDone] = useState(() => isLoaderComplete());
 
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const logoRef = useRef<HTMLDivElement | null>(null);
+  const topCurtainRef = useRef<HTMLDivElement | null>(null);
+  const botCurtainRef = useRef<HTMLDivElement | null>(null);
+  const brandRef = useRef<HTMLDivElement | null>(null);
+  const counterRef = useRef<HTMLSpanElement | null>(null);
+  const counterWrapRef = useRef<HTMLDivElement | null>(null);
+  const eyebrowRef = useRef<HTMLParagraphElement | null>(null);
+  const logoImgRef = useRef<HTMLDivElement | null>(null);
 
-  // Entrance
   useEffect(() => {
-    if (state !== 'entering') return;
-    if (!rootRef.current || !logoRef.current) return;
+    if (done) return;
 
-    const tl = gsap.timeline({
-      defaults: { ease: 'power3.out' },
-      onComplete: () => setState('holding'),
+    const top = topCurtainRef.current;
+    const bot = botCurtainRef.current;
+    const brand = brandRef.current;
+    const counter = counterRef.current;
+    const counterWrap = counterWrapRef.current;
+    const eyebrow = eyebrowRef.current;
+    const logoImg = logoImgRef.current;
+
+    if (!top || !bot || !brand || !counter || !counterWrap || !eyebrow || !logoImg) return;
+
+    // Prevent background scroll while loader is active
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    gsap.killTweensOf([top, bot, brand, counter, counterWrap, eyebrow, logoImg]);
+
+    // ── 1. Initial states ─────────────────────────────────────────────────
+    gsap.set(brand, { opacity: 0 });
+    gsap.set(eyebrow, { opacity: 0, y: 12 });
+    gsap.set(logoImg, { opacity: 0, scale: 0.88, filter: 'blur(8px)' });
+    gsap.set(top, { yPercent: 0 });
+    gsap.set(bot, { yPercent: 0 });
+    gsap.set(counterWrap, { opacity: 1 });
+
+    // ── 2. Master timeline ────────────────────────────────────────────────
+    const masterTl = gsap.timeline({
+      onComplete: () => {
+        // Small grace period so the logo travel tween fully finishes
+        // and the navbar CSS transition has time to play before DOM teardown
+        gsap.delayedCall(0.15, () => {
+          markLoaderComplete();
+          setDone(true);
+          document.body.style.overflow = prevOverflow;
+        });
+      },
     });
 
-    tl.fromTo(rootRef.current, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35 })
-      .fromTo(
-        logoRef.current,
-        { opacity: 0, y: 14, filter: 'blur(8px)' },
-        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1.1 },
-        '-=0.1',
-      )
-      .fromTo(
-        ['[data-loader-top]', '[data-loader-bottom]', '[data-loader-sub]'],
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.7, stagger: 0.07 },
-        '-=0.85',
-      );
+    // Brand enters (whole wrapper fades in)
+    masterTl
+      .to(brand, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.10)
+      .to(eyebrow, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 0.10)
+      .to(logoImg, {
+        opacity: 1,
+        scale: 1,
+        filter: 'blur(0px)',
+        duration: 1.0,
+        ease: 'expo.out',
+      }, 0.25);
 
-    return () => {
-      tl.kill();
-    };
-  }, [state]);
-
-  // Hold
-  useEffect(() => {
-    if (state !== 'holding') return;
-    const t = window.setTimeout(() => setState('flying'), HOLD_BEFORE_FLIP_MS);
-    return () => window.clearTimeout(t);
-  }, [state]);
-
-  // FLIP
-  useEffect(() => {
-    if (state !== 'flying') return;
-    if (!rootRef.current || !logoRef.current) {
-      markLoaderComplete();
-      setState('done');
-      return;
-    }
-
-    const logoEl = logoRef.current;
-    const rootEl = rootRef.current;
-
-    let killed = false;
-    let tl: gsap.core.Timeline | null = null;
-
-    const run = async () => {
-      // 1. Wait for web fonts so the source logo has its final metrics.
-      try {
-        if (typeof document !== 'undefined' && document.fonts?.ready) {
-          await document.fonts.ready;
+    // Counter: animate plain object → write to DOM without React re-renders
+    const countObj = { value: 0 };
+    masterTl.to(countObj, {
+      value: 100,
+      duration: 2.1,
+      ease: 'power3.out',
+      onUpdate: () => {
+        if (counter) {
+          counter.textContent = String(Math.round(countObj.value)).padStart(3, '0');
         }
-      } catch {
-        /* never fatal */
-      }
+      },
+    }, 0.4);
 
-      // 2. Two rAFs — the first completes any pending layout, the second
-      //    guarantees the browser has painted. `getBoundingClientRect` is then
-      //    reading the *final* rendered position, not an intermediate one.
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    // Glitch flicker when counter hits 100
+    masterTl.to(logoImg, {
+      opacity: 0.7,
+      duration: 0.06,
+      ease: 'none',
+      yoyo: true,
+      repeat: 2,
+    }, 2.52);
 
-      if (killed) return;
+    // ── Exit: fade eyebrow + counter ONLY — logo stays alive for travel ──
+    masterTl
+      .to(eyebrow, { opacity: 0, y: -8, duration: 0.30, ease: 'power2.in' }, 2.72)
+      .to(counterWrap, { opacity: 0, duration: 0.30, ease: 'power2.in' }, 2.72);
 
-      const target = document.querySelector<HTMLElement>('[data-logo-target]');
+    // ── Curtain split ─────────────────────────────────────────────────────
+    const EASE = 'power4.inOut';
+    masterTl
+      .to(top, { yPercent: -100, duration: 1.0, ease: EASE }, 2.85)
+      .to(bot, { yPercent: 100, duration: 1.0, ease: EASE }, 2.85);
 
-      // Graceful fallback if target isn't in the DOM (shouldn't happen,
-      // but navigation edge cases could theoretically lose it).
-      if (!target) {
-        tl = gsap.timeline({
-          onComplete: () => {
-            markLoaderComplete();
-            setState('done');
-          },
-        });
-        tl.to(rootEl, { autoAlpha: 0, duration: 0.7, ease: 'power2.inOut' });
-        return;
-      }
+    // ── Logo travel: fires 0.15s after curtain starts opening ─────────────
+    // We launch a standalone gsap.to (not part of masterTl) because we need
+    // the live bounding rects at the moment of execution, not at build time.
+    masterTl.add(() => {
+      // The navbar attaches [data-nav-logo] to its logo container
+      const navTarget = document.querySelector<HTMLElement>('[data-nav-logo]');
+      if (!navTarget) return;
 
-      // 3. Measure both rects AT THIS MOMENT — the navbar target is always
-      //    visible so its rect is reliable.
-      const srcRect = logoEl.getBoundingClientRect();
-      const dstRect = target.getBoundingClientRect();
+      const fromRect = logoImg.getBoundingClientRect();
+      const toRect = navTarget.getBoundingClientRect();
 
-      // Guard against degenerate measurements.
-      if (srcRect.width === 0 || dstRect.width === 0) {
-        tl = gsap.timeline({
-          onComplete: () => {
-            markLoaderComplete();
-            setState('done');
-          },
-        });
-        tl.to(rootEl, { autoAlpha: 0, duration: 0.6, ease: 'power2.inOut' });
-        return;
-      }
+      // FLIP: compute the translate + scale needed to move logo center → nav logo center
+      const fromCX = fromRect.left + fromRect.width / 2;
+      const fromCY = fromRect.top + fromRect.height / 2;
+      const toCX = toRect.left + toRect.width / 2;
+      const toCY = toRect.top + toRect.height / 2;
 
-      const dx = dstRect.left - srcRect.left;
-      const dy = dstRect.top - srcRect.top;
-      const scale = dstRect.width / srcRect.width;
+      const dx = toCX - fromCX;
+      const dy = toCY - fromCY;
+      const scale = toRect.width / fromRect.width;
 
-      // 4. Choreograph:
-      //    - Meta copy fades out first (clean canvas for the flight).
-      //    - The logo tweens to the target position.
-      //    - The curtain lifts LAST so the logo has landed on top of the
-      //      navbar logo before the background disappears. That overlap is
-      //      what makes the handoff invisible.
-      tl = gsap.timeline({
-        defaults: { ease: 'power3.inOut' },
+      gsap.to(logoImg, {
+        x: dx,
+        y: dy,
+        scale,
+        duration: 0.85,
+        ease: 'power4.inOut',
         onComplete: () => {
-          markLoaderComplete();
-          setState('done');
+          // Signal the navbar to reveal its own logo
+          document.documentElement.setAttribute('data-nav-logo-ready', 'true');
         },
       });
+    }, 3.00); // ← starts 0.15 s after curtain begins (3.00 - 2.85 = 0.15)
 
-      tl.to(
-        ['[data-loader-top]', '[data-loader-bottom]', '[data-loader-sub]', '[data-loader-glow]'],
-        { opacity: 0, duration: 0.5, stagger: 0.04, ease: 'power2.in' },
-        0,
-      )
-        .to(
-          logoEl,
-          {
-            x: dx,
-            y: dy,
-            scale,
-            duration: 1.1,
-            ease: 'power3.inOut',
-          },
-          0.1,
-        )
-        // Curtain lift starts when the logo has mostly arrived, finishes after.
-        .to(
-          rootEl,
-          {
-            clipPath: 'inset(0 0 100% 0)',
-            duration: 0.75,
-            ease: 'power3.inOut',
-          },
-          '-=0.35',
-        );
-    };
-
-    void run();
+    // Extend masterTl so its onComplete fires at ~3.85s
+    // (matches logo travel end: 3.00 + 0.85 = 3.85)
+    masterTl.to(brand, { duration: 0 }, 3.85);
 
     return () => {
-      killed = true;
-      tl?.kill();
+      masterTl.kill();
+      document.body.style.overflow = prevOverflow;
+      // Clean up attribute if component unmounts mid-animation
+      document.documentElement.removeAttribute('data-nav-logo-ready');
     };
-  }, [state]);
+  }, [done]);
 
-  if (state === 'done') return null;
+  if (done) return null;
 
   return (
     <div
-      ref={rootRef}
-      role="status"
-      aria-hidden={state === 'flying'}
-      className={cn(
-        'fixed inset-0 z-[100] grain overflow-hidden bg-ink-950 text-bone-100',
-        'grid grid-rows-[auto_1fr_auto]',
-      )}
-      style={{
-        clipPath: 'inset(0 0 0 0)',
-        opacity: 0,
-      }}
+      aria-live="polite"
+      aria-label="Loading"
+      className="fixed inset-0 z-[200] pointer-events-none"
     >
+      {/* ── Top curtain half ──────────────────────────────────────────── */}
       <div
-        data-loader-glow
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(55% 40% at 50% 55%, rgba(226,137,58,0.18) 0%, rgba(226,137,58,0.05) 45%, transparent 75%)',
-        }}
-      />
-
-      <header
-        data-loader-top
-        className="relative z-10 flex items-baseline justify-between px-6 pt-6 font-mono text-[11px] uppercase tracking-superwide text-bone-400 md:px-12 md:pt-10"
+        ref={topCurtainRef}
+        className="absolute left-0 right-0 top-0 h-1/2 overflow-hidden"
+        style={{ backgroundColor: '#0A0807' }}
       >
-        <span>Meridian / 46°12′N 6°09′E</span>
-        <span className="hidden md:inline">Sequence 07 — Preparing</span>
-      </header>
-
-      <div className="relative z-10 grid place-items-center px-6">
         <div
-          ref={logoRef}
-          className="text-[56px] will-animate md:text-[72px]"
+          aria-hidden
+          className="absolute inset-0 opacity-25"
           style={{
-            transformOrigin: 'top left',
-            display: 'inline-block',
+            background:
+              'radial-gradient(ellipse at 30% 90%, rgba(226,137,58,0.35) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(184,120,40,0.20) 0%, transparent 50%)',
           }}
-        >
-          <Logo />
-        </div>
-
-        <div
-          data-loader-sub
-          className="mt-10 text-center font-display text-base italic text-bone-300/80 md:text-lg"
-        >
-          <span className="text-bone-400">—</span>&nbsp;&nbsp;Private Expeditions&nbsp;&nbsp;
-          <span className="text-bone-400">—</span>
-        </div>
+        />
       </div>
 
-      <footer
-        data-loader-bottom
-        className="relative z-10 flex items-end justify-between px-6 pb-8 font-mono text-[11px] uppercase tracking-superwide text-bone-400 md:px-12 md:pb-12"
+      {/* ── Bottom curtain half ───────────────────────────────────────── */}
+      <div
+        ref={botCurtainRef}
+        className="absolute bottom-0 left-0 right-0 h-1/2 overflow-hidden"
+        style={{ backgroundColor: '#0A0807' }}
       >
-        <span>MMXXVI — Vol. 07</span>
-        <span className="hidden md:inline">All systems nominal</span>
-      </footer>
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-25"
+          style={{
+            background:
+              'radial-gradient(ellipse at 70% 10%, rgba(226,137,58,0.25) 0%, transparent 55%)',
+          }}
+        />
+      </div>
+
+      {/* ── Center brand ──────────────────────────────────────────────── */}
+      {/* Sits above both curtains — visible while they're closed */}
+      <div
+        ref={brandRef}
+        className="absolute inset-0 flex flex-col items-center justify-center"
+        style={{ opacity: 0 }}
+      >
+        {/* Eyebrow */}
+        <p
+          ref={eyebrowRef}
+          className="mb-8 font-mono text-[11px] uppercase tracking-[0.4em] text-bone-300/60"
+          style={{ opacity: 0 }}
+        >
+          A studio of visual expeditions
+        </p>
+
+        {/* Logo image — this is the element that will travel to the navbar */}
+        <div
+          ref={logoImgRef}
+          className="relative flex items-center justify-center"
+          style={{ opacity: 0 }}
+        >
+          {/* Ambient glow ring behind the logo */}
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10 rounded-full blur-3xl"
+            style={{
+              background: 'radial-gradient(ellipse, rgba(226,137,58,0.20) 0%, transparent 70%)',
+              transform: 'scale(1.6)',
+            }}
+          />
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/synkyn-logo.png"
+            alt="Synkyn Studios"
+            className="h-auto w-[clamp(240px,40vw,520px)] select-none"
+            draggable={false}
+          />
+        </div>
+
+        {/* Counter */}
+        <div ref={counterWrapRef} className="mt-10 flex items-baseline gap-3">
+          <span
+            ref={counterRef}
+            className="font-mono text-[13px] tabular-nums tracking-[0.5em] text-bone-300/50"
+          >
+            000
+          </span>
+          <span className="font-mono text-[11px] tracking-[0.3em] text-bone-300/30">%</span>
+        </div>
+      </div>
     </div>
   );
 }

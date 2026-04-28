@@ -1,574 +1,419 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useGsap } from '@/hooks/useGsap';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGsap } from '@/hooks/useGsap';
 import { cn } from '@/utils/cn';
+import { framePath } from '@/utils/frames';
 
-// ---------------------------------------------------------------------------
-// Data
-// ---------------------------------------------------------------------------
+export type ShowcaseCard = {
+  id: string;
+  index: string;
+  service: string;
+  tagline: string;
+  description: string;
+  tag: string;
+  thumb: string;
+  video: string;
+  slug: string;
+};
 
-interface ShowcaseItem {
-  id: number;
-  title: string;
-  subtitle: string;
-  category: string;
-  coords: string;
-  imgSrc: string;
-  videoSrc: string;
-  accentHex: string;
-}
-
-const ITEMS: ShowcaseItem[] = [
+/** Only 4 cards shown on the home page — matches the reference provided */
+export const SHOWCASE_CARDS: ShowcaseCard[] = [
   {
-    id: 1,
-    title: 'Saharan Silence',
-    subtitle: 'Where dunes meet stars',
-    category: 'Desert',
-    coords: '23°14′N  5°49′E',
-    imgSrc: '/showcase/sahara-poster.jpg',
-    videoSrc: '/videos/showcase/sahara.mp4',
-    accentHex: '#E2893A',
+    id: 'charter',
+    index: '01',
+    service: 'Private Charter',
+    tagline: 'Your route. Your schedule.',
+    description:
+      'One call. Wheels-up in 70 minutes. Full aircraft. No shared manifest. No questions.',
+    tag: 'Core Service',
+    thumb: framePath(10),
+    video: '/videos/desktop.mp4',
+    slug: 'charter',
   },
   {
-    id: 2,
-    title: 'Fjord Requiem',
-    subtitle: 'Light that never sets',
-    category: 'Nordic',
-    coords: '61°03′N  6°41′E',
-    imgSrc: '/showcase/fjord-poster.jpg',
-    videoSrc: '/videos/showcase/fjord.mp4',
-    accentHex: '#7FADD9',
+    id: 'expeditions',
+    index: '02',
+    service: 'Bespoke Expeditions',
+    tagline: 'Beyond the known world.',
+    description:
+      'From Patagonian glaciers to pre-dawn Saharan landings. We brief. We plan. We fly.',
+    tag: 'Signature',
+    thumb: framePath(50),
+    video: '/videos/desktop.mp4',
+    slug: 'expeditions',
   },
   {
-    id: 3,
-    title: 'Kyoto Dusk',
-    subtitle: 'Temples & amber fog',
-    category: 'East Asia',
-    coords: '35°00′N  135°45′E',
-    imgSrc: '/showcase/kyoto-poster.jpg',
-    videoSrc: '/videos/showcase/kyoto.mp4',
-    accentHex: '#D4A4A4',
+    id: 'cargo',
+    index: '03',
+    service: 'Cargo & Logistics',
+    tagline: 'When time is the cargo.',
+    description:
+      'Critical shipments. Medical evacuations. Sensitive freight. Discretion guaranteed.',
+    tag: 'Operational',
+    thumb: framePath(90),
+    video: '/videos/desktop.mp4',
+    slug: 'cargo',
   },
   {
-    id: 4,
-    title: 'Patagonian Edge',
-    subtitle: 'Granite cathedrals',
-    category: 'Wilderness',
-    coords: '50°58′S  73°24′W',
-    imgSrc: '/showcase/patagonia-poster.jpg',
-    videoSrc: '/videos/showcase/patagonia.mp4',
-    accentHex: '#8FC4A2',
-  },
-  {
-    id: 5,
-    title: 'Aegean Chapter',
-    subtitle: 'Caldera & cobalt',
-    category: 'Mediterranean',
-    coords: '36°23′N  25°27′E',
-    imgSrc: '/showcase/aegean-poster.jpg',
-    videoSrc: '/videos/showcase/aegean.mp4',
-    accentHex: '#4FA8C5',
-  },
-  {
-    id: 6,
-    title: 'Namib Passage',
-    subtitle: 'Oldest desert on earth',
-    category: 'Desert',
-    coords: '24°12′S  15°49′E',
-    imgSrc: '/showcase/namib-poster.jpg',
-    videoSrc: '/videos/showcase/namib.mp4',
-    accentHex: '#C4804A',
+    id: 'concierge',
+    index: '04',
+    service: 'Air Concierge',
+    tagline: 'Everything arranged. Nothing forgotten.',
+    description:
+      'Ground transfers, customs clearance, catering, permits, hotels. One team. One call.',
+    tag: 'Full Service',
+    thumb: framePath(120),
+    video: '/videos/desktop.mp4',
+    slug: 'concierge',
   },
 ];
 
-function romanize(n: number): string {
-  return ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][n - 1] ?? String(n);
-}
-
-// ---------------------------------------------------------------------------
-// HorizontalShowcase
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function HorizontalShowcase() {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
-  useGsap(
-    () => {
-      const section = sectionRef.current;
-      const track = trackRef.current;
-      if (!section || !track) return;
-      gsap.registerPlugin(ScrollTrigger);
+  // Headline reveal — scroll triggered, fires once, no pin
+  useGsap(() => {
+    if (!sectionRef.current) return;
+    gsap.registerPlugin(ScrollTrigger);
 
-      const getScrollAmount = () => -(track.scrollWidth - section.offsetWidth);
-      const scrollEnd = () =>
-        `+=${Math.abs(getScrollAmount()) + section.offsetWidth * 0.35}`;
-
-      // ── Entry reveal ─────────────────────────────────────────────────────
-      const entryTl = gsap.timeline({
+    gsap.fromTo(
+      '[data-hs-headline]',
+      { y: 48, opacity: 0 },
+      {
+        y: 0,
+        opacity: 1,
+        duration: 1.1,
+        stagger: 0.08,
+        ease: 'expo.out',
         scrollTrigger: {
-          trigger: section,
-          start: 'top 85%',
-          scroller: document.body,
+          trigger: sectionRef.current,
+          start: 'top 75%',
           once: true,
         },
-        defaults: { ease: 'expo.out' },
-      });
-
-      entryTl
-        .from('[data-hs-eyebrow]', { y: 16, opacity: 0, duration: 1.0, stagger: 0.1 })
-        .from('[data-hs-card]', { x: 80, opacity: 0, duration: 1.2, stagger: 0.12, ease: 'expo.out' }, 0.15);
-
-      // ── Horizontal pin ────────────────────────────────────────────────────
-      //
-      // REMOVED: `style={{ zIndex: 2 }}` from the section element.
-      //
-      // Setting z-index on the section root (or any positioned ancestor)
-      // creates a CSS stacking context / containing block. When GSAP then
-      // sets `position: fixed` on the pinned element, the browser scopes
-      // that fixed positioning to the nearest containing block instead of
-      // the viewport — so the "pinned" section jumps to the wrong position.
-      //
-      // scroller: document.body — must match the scrollerProxy target set
-      // in LenisProvider so ScrollTrigger reads Lenis's scroll position
-      // instead of window.scrollY (which Lenis intercepts and virtualises).
-      // ──────────────────────────────────────────────────────────────────────
-      const pinTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: section,
-          start: 'top top',
-          end: scrollEnd,
-          pin: true,
-          pinSpacing: true,
-          scroller: document.body,
-          scrub: 1.1,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-        },
-      });
-
-      pinTl
-        .to(track, { x: () => getScrollAmount(), ease: 'none' })
-        .from('[data-hs-progress-fill]', { scaleX: 0, ease: 'none' }, 0);
-
-      // ── Progress rail sync ────────────────────────────────────────────────
-      const progressTrigger = ScrollTrigger.create({
-        trigger: section,
-        start: 'top top',
-        end: scrollEnd,
-        scroller: document.body,
-        scrub: 1.1,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          const fill = document.querySelector<HTMLElement>('[data-hs-progress-fill]');
-          if (fill) fill.style.transform = `scaleX(${self.progress})`;
-        },
-      });
-
-      // ── Parallax card contents ────────────────────────────────────────────
-      gsap.utils.toArray<HTMLElement>('[data-hs-inner]').forEach((inner, i) => {
-        gsap.to(inner, {
-          x: -32 * (i * 0.12 + 0.5),
-          ease: 'none',
-          scrollTrigger: {
-            trigger: section,
-            start: 'top top',
-            end: scrollEnd,
-            scroller: document.body,
-            scrub: 1.4,
-            invalidateOnRefresh: true,
-          },
-        });
-      });
-
-      return () => {
-        entryTl.scrollTrigger?.kill();
-        entryTl.kill();
-        pinTl.scrollTrigger?.kill();
-        pinTl.kill();
-        progressTrigger.kill();
-        ScrollTrigger.getAll()
-          .filter((t) => t.vars.trigger === section)
-          .forEach((t) => t.kill());
-      };
-    },
-    [],
-    sectionRef,
-  );
+      },
+    );
+  }, [], sectionRef);
 
   return (
     <section
       ref={sectionRef}
-      id="horizontal-showcase"
-      aria-label="Destination showcase"
-      // ── NO inline style with position or zIndex on this element ──────────
-      // See comment in the GSAP setup above for full explanation.
-      // The section uses `relative` via Tailwind which is fine — Tailwind's
-      // `relative` class does NOT set z-index so it does not create a
-      // stacking context on its own.
-      // ──────────────────────────────────────────────────────────────────────
-      className="relative h-screen w-full overflow-hidden bg-ink-950"
+      id="services-preview"
+      className="relative bg-ink-950 text-bone-100"
     >
-      {/* Atmospheric grain + radial */}
-      <div aria-hidden className="grain pointer-events-none absolute inset-0 z-0" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(226,137,58,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 40%, rgba(142,74,20,0.06) 0%, transparent 55%)',
-        }}
-      />
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <div className="container-fluid relative z-10 pb-8 pt-24 md:pb-12 md:pt-32">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p data-hs-headline className="eyebrow mb-4">
+              § Services
+            </p>
+            <h2
+              data-hs-headline
+              className="font-display text-[13vw] italic leading-[0.88] tracking-ultratight md:text-[6vw]"
+            >
+              What we{' '}
+              <span className="text-ember-400">offer.</span>
+            </h2>
+          </div>
 
-      {/* Top seam bleed */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-30"
-        style={{ height: 'clamp(80px, 14svh, 140px)', background: 'linear-gradient(to bottom, #0A0807 0%, transparent 100%)' }}
-      />
-      {/* Bottom seam bleed */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
-        style={{ height: 'clamp(60px, 10svh, 100px)', background: 'linear-gradient(to top, #0A0807 0%, transparent 100%)' }}
-      />
-
-      {/* Top meta bar */}
-      <div className="container-fluid pointer-events-none absolute left-0 right-0 top-8 z-20 flex items-end justify-between">
-        <div className="flex flex-col gap-1.5">
-          <span data-hs-eyebrow className="font-mono text-[9px] uppercase tracking-superwide text-ember-400/70">
-            § Selected itineraries
-          </span>
-          <h2 data-hs-eyebrow className="font-display text-[clamp(1.6rem,3.2vw,3rem)] italic leading-tight tracking-tight text-bone-100">
-            Meridian Journeys
-          </h2>
-        </div>
-        <div data-hs-eyebrow className="hidden items-center gap-2.5 md:flex">
-          <span className="font-mono text-[9px] uppercase tracking-superwide text-bone-200/40">Scroll to explore</span>
-          <span aria-hidden className="flex gap-0.5">
-            {[0, 1, 2].map((i) => (
-              <span key={i} className="block h-px w-3 bg-ember-400/40" />
-            ))}
-            <span className="block h-px w-6 bg-ember-400/80" />
-          </span>
+          <div data-hs-headline className="flex flex-col items-start gap-4 md:items-end">
+            <p className="max-w-[30ch] text-sm leading-relaxed text-bone-200/75 md:text-right">
+              Five disciplines. One operating philosophy: we say yes, then figure out the rest.
+            </p>
+            <Link
+              href="/services"
+              data-cursor="View all"
+              className="group glass inline-flex items-center gap-3 rounded-full border-white/15 bg-white/[0.05] px-5 py-2.5 text-bone-100 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-superwide">
+                View all services
+              </span>
+              <svg
+                viewBox="0 0 14 14"
+                className="h-3 w-3 transition-transform duration-300 ease-soft group-hover:translate-x-0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              >
+                <path d="M2 7h9M7 3l4 4-4 4" />
+              </svg>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Horizontal track */}
-      <div
-        ref={trackRef}
-        className="absolute top-0 flex h-full items-center will-change-transform"
-        style={{ paddingLeft: 'clamp(1.5rem,5vw,5rem)', gap: 'clamp(0.75rem,1.5vw,1.5rem)' }}
-      >
-        {ITEMS.map((item, idx) => (
-          <ShowcaseCard
-            key={item.id}
-            item={item}
-            index={idx}
-            isActive={activeIdx === idx}
-            onEnter={() => setActiveIdx(idx)}
-            onLeave={() => setActiveIdx((prev) => (prev === idx ? null : prev))}
-          />
+      {/* ── Mobile: horizontal snap scroll ──────────────────────────── */}
+      {/*
+        Pure CSS — overflow-x scroll with snap. No GSAP pin = no overlap bugs.
+        Each card is 78vw wide so the next card peeks at the right edge.
+        The "View all" tail card closes the row.
+      */}
+      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden">
+        <div className="flex snap-x snap-mandatory flex-row gap-4 px-5 pb-8">
+          {SHOWCASE_CARDS.map((card) => (
+            <div key={card.id} className="w-[78vw] shrink-0 snap-start">
+              <ServiceCard card={card} />
+            </div>
+          ))}
+
+          {/* Mobile tail card — "View all" */}
+          <div className="flex snap-start items-stretch">
+            <Link
+              href="/services"
+              className="glass flex w-[72vw] shrink-0 flex-col items-center justify-center gap-4 rounded-2xl border-white/15 bg-white/[0.03] px-8 py-12 text-center text-bone-100 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10"
+            >
+              <span className="font-display text-3xl italic">
+                View all{' '}
+                <span className="text-ember-400">services →</span>
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-400">
+                5 disciplines total
+              </span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop: 4-column static grid ───────────────────────────── */}
+      {/*
+        No GSAP pin — a simple responsive grid.
+        This eliminates the entire class of pin/spacer overlap bugs on desktop.
+        The grid flows naturally in the document; subsequent sections push down
+        correctly because there is no pinSpacing spacer to miscalculate.
+      */}
+      <div className="hidden md:grid md:grid-cols-4 md:gap-5 md:px-12 md:pb-16">
+        {SHOWCASE_CARDS.map((card) => (
+          <ServiceCard key={card.id} card={card} />
         ))}
-        <div className="shrink-0" style={{ width: 'clamp(1.5rem,5vw,5rem)' }} />
       </div>
 
-      {/* Bottom progress rail */}
-      <div className="container-fluid absolute bottom-8 left-0 right-0 z-20 flex items-center gap-4" aria-hidden>
-        <span className="font-mono text-[9px] uppercase tracking-superwide text-bone-200/40 tabular-nums">
-          {String(activeIdx !== null ? activeIdx + 1 : 1).padStart(2, '0')}&nbsp;/&nbsp;{String(ITEMS.length).padStart(2, '0')}
-        </span>
-        <div className="relative h-px flex-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.10)' }}>
-          <span
-            data-hs-progress-fill
-            className="absolute inset-y-0 left-0 w-full origin-left rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, rgba(226,137,58,0.5) 0%, rgba(226,137,58,0.95) 100%)',
-              transform: 'scaleX(0)',
-              boxShadow: '0 0 8px rgba(226,137,58,0.4)',
-            }}
-          />
+      {/* Desktop footer row */}
+      <div className="container-fluid hidden items-center justify-between pb-8 md:flex">
+        <div className="flex items-center gap-3 text-bone-400">
+          <svg
+            viewBox="0 0 24 12"
+            className="h-3 w-6 text-ember-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          >
+            <path d="M1 6h20M15 1l6 5-6 5" />
+          </svg>
+          <span className="font-mono text-[10px] uppercase tracking-superwide">
+            Our disciplines
+          </span>
         </div>
-        <span className="font-mono text-[9px] uppercase tracking-superwide text-bone-200/40">
-          {ITEMS.length} destinations
-        </span>
+        <Link
+          href="/services"
+          className="group inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-superwide text-bone-400 transition-colors duration-300 hover:text-ember-400"
+        >
+          View all services
+          <svg
+            viewBox="0 0 14 14"
+            className="h-2.5 w-2.5 transition-transform duration-300 group-hover:translate-x-0.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          >
+            <path d="M2 7h9M7 3l4 4-4 4" />
+          </svg>
+        </Link>
       </div>
     </section>
   );
 }
 
-// ---------------------------------------------------------------------------
-// ShowcaseCard
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// ServiceCard
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface ShowcaseCardProps {
-  item: ShowcaseItem;
-  index: number;
-  isActive: boolean;
-  onEnter: () => void;
-  onLeave: () => void;
-}
-
-function ShowcaseCard({ item, index, isActive, onEnter, onLeave }: ShowcaseCardProps) {
-  const cardRef = useRef<HTMLDivElement | null>(null);
+function ServiceCard({ card }: { card: ShowcaseCard }) {
+  const cardRef = useRef<HTMLAnchorElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hovered, setHovered] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
-  const accentRgb = hexToRgb(item.accentHex);
-
-  useEffect(() => {
+  const enter = useCallback(() => {
+    setHovered(true);
     const v = videoRef.current;
     if (!v) return;
-    if (isActive) { v.currentTime = 0; v.play().catch(() => undefined); }
-    else { v.pause(); }
-  }, [isActive]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = cardRef.current;
-    if (!el) return;
-    const { left, top, width, height } = el.getBoundingClientRect();
-    const x = (e.clientX - left) / width - 0.5;
-    const y = (e.clientY - top) / height - 0.5;
-    gsap.to(el, { rotateY: x * 6, rotateX: -y * 4, duration: 0.5, ease: 'power2.out', transformPerspective: 900 });
+    v.currentTime = 0;
+    v.play().catch(() => undefined);
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const leave = useCallback(() => {
+    setHovered(false);
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  }, []);
+
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
     const el = cardRef.current;
     if (!el) return;
-    gsap.to(el, { rotateY: 0, rotateX: 0, duration: 0.8, ease: 'elastic.out(1,0.4)' });
-    onLeave();
-  }, [onLeave]);
+    const rect = el.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 7;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -7;
+    el.style.setProperty('--tilt-x', y + 'deg');
+    el.style.setProperty('--tilt-y', x + 'deg');
+  }, []);
+
+  const onMouseLeave = useCallback(() => {
+    const el = cardRef.current;
+    if (el) {
+      el.style.setProperty('--tilt-x', '0deg');
+      el.style.setProperty('--tilt-y', '0deg');
+    }
+    leave();
+  }, [leave]);
 
   return (
-    <div
+    <Link
       ref={cardRef}
-      data-hs-card
-      onMouseEnter={onEnter}
-      onMouseLeave={handleMouseLeave}
-      onMouseMove={handleMouseMove}
-      style={{
-        '--accent': accentRgb,
-        flexShrink: 0,
-        width: 'clamp(280px, 45vw, 640px)',
-        height: 'clamp(400px, 80vh, 880px)',
-        willChange: 'transform',
-      } as React.CSSProperties}
+      href={`/services/${card.slug}`}
+      data-cursor={card.service}
+      onMouseEnter={enter}
+      onMouseLeave={onMouseLeave}
+      onMouseMove={onMouseMove}
       className={cn(
-        'group/card relative cursor-pointer select-none',
-        'rounded-[1.75rem] overflow-hidden',
-        'ring-1 transition-[box-shadow,--tw-ring-color] duration-500 ease-out',
-        isActive
-          ? 'ring-[rgba(var(--accent),0.55)] shadow-[0_0_0_1px_rgba(var(--accent),0.20),0_28px_90px_-24px_rgba(var(--accent),0.55),0_8px_30px_-8px_rgba(0,0,0,0.7)]'
-          : 'ring-white/10 shadow-[0_16px_60px_-20px_rgba(0,0,0,0.65)]',
+        'group relative flex flex-col overflow-hidden',
+        // Height
+        'min-h-[480px] md:h-[520px] lg:h-[560px]',
+        // Visual
+        'rounded-2xl md:rounded-3xl',
+        'bg-ink-900 ring-1 ring-white/10',
+        'shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)]',
+        'transition-[box-shadow,ring-color] duration-500 ease-soft',
+        'hover:ring-ember-400/30 hover:shadow-[0_30px_80px_-20px_rgba(226,137,58,0.20)]',
       )}
+      style={{
+        transform: 'perspective(1000px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg))',
+        transition: 'box-shadow 0.5s ease, transform 0.4s ease',
+      }}
     >
-      <div data-hs-inner className="relative h-full w-full">
-        {!imgError && (
-          <img
-            src={item.imgSrc} alt="" aria-hidden draggable={false}
-            onError={() => setImgError(true)}
-            className={cn(
-              'absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out',
-              isActive && videoReady ? 'opacity-0' : 'opacity-100',
-            )}
-          />
-        )}
+      {/* ── Image + video ─────────────────────────────────────────── */}
+      <div className="relative flex-1 overflow-hidden">
+        <Image
+          src={card.thumb}
+          alt={card.service}
+          fill
+          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 25vw, (min-width: 768px) 25vw, 78vw"
+          className={cn(
+            'object-cover transition-[filter,transform] duration-700 ease-soft',
+            'grayscale-[0.3]',
+            hovered ? 'scale-[1.05] grayscale-0' : 'scale-100',
+          )}
+          priority={card.index === '01'}
+        />
 
-        {imgError && (
-          <div
-            aria-hidden className="absolute inset-0"
-            style={{ background: `radial-gradient(ellipse 80% 70% at 50% 60%, rgba(${accentRgb},0.22) 0%, rgba(10,8,7,0.95) 80%)` }}
-          />
-        )}
-
+        {/* Video on hover */}
         <video
-          ref={videoRef} src={item.videoSrc} muted playsInline loop preload="none"
+          ref={videoRef}
+          src={card.video}
+          muted
+          playsInline
+          loop
+          preload="none"
           onCanPlay={() => setVideoReady(true)}
+          className={cn(
+            'pointer-events-none absolute inset-0 h-full w-full object-cover',
+            'transition-opacity duration-500 ease-soft',
+            hovered && videoReady ? 'opacity-100' : 'opacity-0',
+          )}
+          aria-hidden
+        />
+
+        {/* Gradient veil */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/30 to-ink-900/40"
+        />
+
+        {/* Hover ember shimmer at top */}
+        <div
           aria-hidden
           className={cn(
-            'absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out',
-            isActive && videoReady ? 'opacity-100' : 'opacity-0',
+            'pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-ember-400/80 to-transparent',
+            'transition-opacity duration-500',
+            hovered ? 'opacity-100' : 'opacity-0',
           )}
         />
 
-        <div
-          aria-hidden className="pointer-events-none absolute inset-0"
-          style={{
-            background: [
-              'linear-gradient(180deg, rgba(10,8,7,0.45) 0%, transparent 30%, transparent 50%, rgba(10,8,7,0.90) 100%)',
-              'linear-gradient(90deg, rgba(10,8,7,0.14) 0%, transparent 25%, transparent 75%, rgba(10,8,7,0.14) 100%)',
-            ].join(', '),
-          }}
-        />
+        {/* Corner ticks */}
+        <CornerTick pos="tl" />
+        <CornerTick pos="tr" />
 
-        <div
-          aria-hidden
-          className={cn('pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-500', isActive ? 'opacity-100' : 'opacity-0')}
-          style={{ boxShadow: `inset 0 0 50px rgba(${accentRgb},0.15)` }}
-        />
-
-        {/* Category chip */}
-        <div className="absolute left-4 top-4 z-10">
-          <div className={cn(
-            'inline-flex items-center gap-2 rounded-full px-3 py-1.5 border backdrop-blur-md',
-            'transition-[background,border-color,box-shadow] duration-500',
-            isActive
-              ? 'border-[rgba(var(--accent),0.45)] bg-[rgba(var(--accent),0.15)] shadow-[0_0_14px_rgba(var(--accent),0.20)]'
-              : 'border-white/15 bg-white/[0.06]',
-          )}>
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-500"
-              style={{ background: isActive ? `rgb(${accentRgb})` : 'rgba(255,255,255,0.45)' }} />
-            <span className="font-mono text-[9px] uppercase tracking-superwide text-bone-100">
-              {item.category}&nbsp;—&nbsp;{romanize(item.id)}
-            </span>
-          </div>
-        </div>
-
-        {/* Live indicator */}
-        <div className={cn(
-          'absolute right-4 top-4 z-10 transition-[opacity,transform] duration-500 ease-out',
-          isActive ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0',
-        )}>
-          <div
-            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 backdrop-blur-md"
-            style={{ borderColor: `rgba(${accentRgb},0.45)`, background: `rgba(${accentRgb},0.14)` }}
-          >
-            <SoundBars accentRgb={accentRgb} active={isActive} />
-            <span className="font-mono text-[8px] uppercase tracking-superwide text-bone-100/80">Live</span>
-          </div>
-        </div>
-
-        {/* Roman numeral watermark */}
-        <div aria-hidden className="pointer-events-none absolute right-4 top-1/2 z-0 -translate-y-1/2 select-none">
-          <span className={cn(
-            'font-display italic leading-none transition-[opacity,color] duration-500 text-[clamp(5rem,12vw,9rem)]',
-            isActive ? 'text-bone-100/[0.07]' : 'text-bone-100/[0.04]',
-          )}>
-            {romanize(item.id)}
+        {/* Top chrome */}
+        <div className="absolute left-4 top-4 z-10 flex items-center gap-3 font-mono text-[10px] uppercase tracking-superwide text-bone-100/85">
+          <span>{card.index}</span>
+          <span className="h-px w-4 bg-bone-100/40" />
+          <span className="glass rounded-full border-white/15 bg-white/[0.08] px-2.5 py-1">
+            {card.tag}
           </span>
         </div>
 
-        {/* Bottom text */}
-        <div className="absolute inset-x-0 bottom-0 z-10 p-5">
-          <p className={cn(
-            'mb-1.5 font-mono text-[9px] uppercase tracking-superwide transition-[opacity,transform] duration-500',
-            isActive ? 'translate-y-0 opacity-60' : 'translate-y-1 opacity-30',
-          )} style={{ color: isActive ? `rgb(${accentRgb})` : 'rgb(var(--color-bone-200))' }}>
-            {item.coords}
-          </p>
-          <h3 className={cn(
-            'font-display text-[clamp(1.15rem,2.2vw,1.8rem)] italic leading-tight tracking-tight text-bone-50 transition-transform duration-500',
-            isActive ? 'translate-y-0' : 'translate-y-0.5',
-          )}>
-            {item.title}
+        {/* Bottom — service name on image */}
+        <div className="absolute inset-x-4 bottom-4 z-10">
+          <h3 className="font-display text-2xl italic leading-tight text-bone-100 md:text-3xl">
+            {card.service}
           </h3>
-          <p className={cn(
-            'mt-0.5 font-mono text-[10px] uppercase tracking-superwide transition-[opacity,transform] duration-500 ease-out',
-            isActive ? 'translate-y-0 opacity-55' : 'translate-y-1 opacity-0',
-          )} style={{ color: `rgba(${accentRgb},0.85)` }}>
-            {item.subtitle}
+          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-superwide text-ember-400">
+            {card.tagline}
           </p>
-          <div className={cn(
-            'mt-3.5 flex items-center gap-3 transition-[opacity,transform] duration-500 ease-out',
-            isActive ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
-          )}>
-            <span className="block h-px flex-1 origin-left" style={{ background: `rgba(${accentRgb},0.35)` }} />
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[9px] uppercase tracking-superwide text-bone-50"
-              style={{ border: `1px solid rgba(${accentRgb},0.35)`, background: `rgba(${accentRgb},0.10)` }}
-            >
-              Explore
-              <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M2 6h8M6 2l4 4-4 4" />
-              </svg>
-            </span>
-          </div>
         </div>
-
-        {isActive && (
-          <div className="pointer-events-none absolute bottom-4 left-4 z-10">
-            <VideoProgressRing videoRef={videoRef} accentRgb={accentRgb} />
-          </div>
-        )}
       </div>
-    </div>
+
+      {/* ── Info block ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 border-t border-[var(--line)] px-5 py-4 md:px-6">
+        <p className="line-clamp-2 text-[12px] leading-relaxed text-bone-200/80">
+          {card.description}
+        </p>
+        <span
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--line)]',
+            'transition-[background,border-color,transform] duration-300 ease-soft',
+            'group-hover:border-ember-400 group-hover:bg-ember-500/15 group-hover:translate-x-0.5',
+          )}
+        >
+          <svg
+            viewBox="0 0 14 14"
+            className="h-3 w-3 text-bone-100"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          >
+            <path d="M2 7h9M7 3l4 4-4 4" />
+          </svg>
+        </span>
+      </div>
+    </Link>
   );
 }
 
-// ---------------------------------------------------------------------------
-// VideoProgressRing
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// CornerTick
+// ─────────────────────────────────────────────────────────────────────────────
 
-function VideoProgressRing({ videoRef, accentRgb }: { videoRef: React.RefObject<HTMLVideoElement | null>; accentRgb: string }) {
-  const [progress, setProgress] = useState(0);
-  const SIZE = 28;
-  const STROKE = 1.6;
-  const R = (SIZE - STROKE) / 2;
-  const CIRC = 2 * Math.PI * R;
-
-  useEffect(() => {
-    let raf = 0;
-    const tick = () => {
-      const v = videoRef.current;
-      if (v && v.duration > 0) setProgress(v.currentTime / v.duration);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [videoRef]);
-
+function CornerTick({ pos }: { pos: 'tl' | 'tr' }) {
+  const cls = pos === 'tl' ? 'left-3 top-3' : 'right-3 top-3 rotate-90';
   return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden>
-      <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={STROKE} />
-      <circle
-        cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
-        stroke={`rgb(${accentRgb})`} strokeWidth={STROKE} strokeLinecap="round"
-        strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - progress)}
-        transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
-        style={{ transition: 'stroke-dashoffset 120ms linear', filter: `drop-shadow(0 0 3px rgb(${accentRgb}))` }}
-      />
-    </svg>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SoundBars
-// ---------------------------------------------------------------------------
-
-function SoundBars({ accentRgb, active }: { accentRgb: string; active: boolean }) {
-  return (
-    <span className="flex items-end gap-[2px]" style={{ height: 10 }}>
-      {[4, 8, 6, 10, 5].map((h, i) => (
-        <span key={i} className="w-[2px] rounded-full" style={{
-          height: active ? h : 3,
-          background: `rgb(${accentRgb})`,
-          transition: `height ${180 + i * 55}ms ease-in-out`,
-          animation: active ? `soundBar${i} ${0.6 + i * 0.1}s ease-in-out infinite alternate` : 'none',
-        }} />
-      ))}
-      <style>{`
-        @keyframes soundBar0 { from { height: 3px } to { height: 8px } }
-        @keyframes soundBar1 { from { height: 5px } to { height: 10px } }
-        @keyframes soundBar2 { from { height: 4px } to { height: 7px } }
-        @keyframes soundBar3 { from { height: 7px } to { height: 12px } }
-        @keyframes soundBar4 { from { height: 3px } to { height: 6px } }
-      `}</style>
+    <span aria-hidden className={'pointer-events-none absolute z-10 h-3.5 w-3.5 ' + cls}>
+      <span className="absolute left-0 top-0 h-px w-full bg-bone-100/50" />
+      <span className="absolute left-0 top-0 h-full w-px bg-bone-100/50" />
     </span>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function hexToRgb(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `${r},${g},${b}`;
 }
