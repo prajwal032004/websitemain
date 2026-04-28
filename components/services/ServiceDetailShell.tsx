@@ -204,7 +204,7 @@ export default function ServiceDetailShell({ service }: Props) {
 
           {/* Features list */}
           <div className={cn('md:col-span-6', service.flip ? 'md:col-start-1 md:row-start-1' : 'md:col-start-7')}>
-            <p className="eyebrow mb-6">What's included</p>
+            <p className="eyebrow mb-6">What&apos;s included</p>
             <ul className="divide-y divide-[var(--line)]">
               {service.features.map((f) => (
                 <li key={f.label} data-sd-feature className="grid gap-2 py-5 md:grid-cols-2 md:gap-6">
