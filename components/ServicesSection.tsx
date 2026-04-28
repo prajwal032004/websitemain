@@ -143,7 +143,7 @@ export default function ServicesSection() {
                 className="pointer-events-none absolute inset-0 z-0"
                 style={{
                     background:
-                        'radial-gradient(ellipse 70% 50% at 0% 60%, rgba(226,137,58,0.06) 0%, transparent 55%), radial-gradient(ellipse 50% 60% at 100% 20%, rgba(142,74,20,0.05) 0%, transparent 50%)',
+                        'radial-gradient(ellipse 70% 50% at 0% 60%, rgba(230,207,68,0.06) 0%, transparent 55%), radial-gradient(ellipse 50% 60% at 100% 20%, rgba(138,123,22,0.05) 0%, transparent 50%)',
                 }}
             />
 
@@ -212,7 +212,7 @@ export default function ServicesSection() {
                             'font-mono text-[10px] uppercase tracking-superwide text-bone-100/80',
                             'transition-[background,border-color,box-shadow,color] duration-400',
                             'hover:border-ember-400/50 hover:bg-ember-500/10 hover:text-bone-50',
-                            'hover:shadow-[0_0_24px_rgba(226,137,58,0.14)]',
+                            'hover:shadow-[0_0_24px_rgba(230,207,68,0.14)]',
                         )}
                     >
                         <span>Explore all services</span>

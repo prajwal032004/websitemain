@@ -102,7 +102,7 @@ export default function Loader({ progress, done, onExited, error }: LoaderProps)
           className="absolute inset-0 opacity-40"
           style={{
             background:
-              'radial-gradient(ellipse at 30% 80%, rgba(226,137,58,0.22) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(184,146,74,0.12) 0%, transparent 60%)',
+              'radial-gradient(ellipse at 30% 80%, rgba(230,207,68,0.22) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(184,170,40,0.12) 0%, transparent 60%)',
           }}
         />
         {/* Grain */}
@@ -120,7 +120,7 @@ export default function Loader({ progress, done, onExited, error }: LoaderProps)
           className="absolute inset-0 opacity-30"
           style={{
             background:
-              'radial-gradient(ellipse at 70% 20%, rgba(226,137,58,0.18) 0%, transparent 60%)',
+              'radial-gradient(ellipse at 70% 20%, rgba(230,207,68,0.18) 0%, transparent 60%)',
           }}
         />
         <div aria-hidden className="grain absolute inset-0" />
@@ -165,7 +165,7 @@ export default function Loader({ progress, done, onExited, error }: LoaderProps)
             style={{ width: `${pct}%`, transition: 'width 0.5s ease' }}
           />
           <div
-            className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-ember-400 shadow-[0_0_14px_2px_rgba(226,137,58,0.6)]"
+            className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-ember-400 shadow-[0_0_14px_2px_rgba(230,207,68,0.6)]"
             style={{ left: `calc(${pct}% - 4px)`, transition: 'left 0.5s ease' }}
           />
         </div>

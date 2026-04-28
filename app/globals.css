@@ -6,9 +6,9 @@
   --bg: #0a0807;
   --bg-elev: #14100d;
   --fg: #f4ecd8;
-  --fg-muted: #b09a75;
-  --accent: #e2893a;
-  --accent-deep: #8e4a14;
+  --fg-muted: #C8B896;
+  --accent: #F0E06A;
+  --accent-deep: #B8A41E;
   --line: rgba(244, 236, 216, 0.12);
   --line-strong: rgba(244, 236, 216, 0.22);
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
@@ -33,7 +33,7 @@
   body {
     background: var(--bg);
     color: var(--fg);
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: 'ss01', 'ss02', 'cv11';
     overflow-x: hidden;
     min-height: 100vh;

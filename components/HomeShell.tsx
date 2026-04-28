@@ -34,6 +34,7 @@ const StatsSection = dynamic(
   () => import('@/components/StatsSection'),
   { ssr: false },
 );
+
 const HorizontalShowcase = dynamic(
   () => import('@/components/HorizontalShowcase'),
   { ssr: false },
@@ -62,6 +63,7 @@ export default function HomeShell() {
       <IntroSection />
       <DesertWindSection />
       <StatsSection />
+
       <HorizontalShowcase />
       <FeaturesSection />
       <DestinationsMarquee />

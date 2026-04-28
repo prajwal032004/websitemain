@@ -69,7 +69,7 @@ export default function ServiceDetailShell({ service }: Props) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(65% 50% at 50% 0%, rgba(226,137,58,0.14) 0%, transparent 60%)' }}
+          style={{ background: 'radial-gradient(65% 50% at 50% 0%, rgba(230,207,68,0.14) 0%, transparent 60%)' }}
         />
 
         <div className="container-fluid relative">

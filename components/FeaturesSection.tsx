@@ -120,7 +120,7 @@ export default function FeaturesSection() {
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           background:
-            'radial-gradient(55% 40% at 85% 10%, rgba(226,137,58,0.10) 0%, transparent 65%), radial-gradient(45% 35% at 15% 90%, rgba(142,74,20,0.08) 0%, transparent 65%)',
+            'radial-gradient(55% 40% at 85% 10%, rgba(230,207,68,0.10) 0%, transparent 65%), radial-gradient(45% 35% at 15% 90%, rgba(138,123,22,0.08) 0%, transparent 65%)',
         }}
       />
 

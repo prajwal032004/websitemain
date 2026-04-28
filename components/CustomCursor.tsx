@@ -113,7 +113,7 @@ export default function CustomCursor() {
         className={cn(
           'pointer-events-none fixed left-0 top-0 z-[200]',
           'h-2 w-2 rounded-full bg-ember-400',
-          'shadow-[0_0_10px_rgba(226,137,58,0.8)]',
+          'shadow-[0_0_10px_rgba(230,207,68,0.8)]',
           'transition-[opacity,transform] duration-150',
           visible ? 'opacity-100' : 'opacity-0',
         )}
@@ -149,8 +149,8 @@ export default function CustomCursor() {
         .cursor-ring.is-action {
           width: 80px !important;
           height: 80px !important;
-          border-color: rgba(226,137,58,0.70) !important;
-          background: rgba(226,137,58,0.10) !important;
+          border-color: rgba(230,207,68,0.70) !important;
+          background: rgba(230,207,68,0.10) !important;
         }
         .cursor-ring.is-action .cursor-ring-label {
           opacity: 1 !important;
@@ -159,8 +159,8 @@ export default function CustomCursor() {
         .cursor-ring.is-link {
           width: 54px !important;
           height: 54px !important;
-          border-color: rgba(226,137,58,0.55) !important;
-          background: rgba(226,137,58,0.07) !important;
+          border-color: rgba(230,207,68,0.55) !important;
+          background: rgba(230,207,68,0.07) !important;
         }
       `}</style>
     </>

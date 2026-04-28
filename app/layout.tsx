@@ -1,27 +1,21 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Manrope, JetBrains_Mono } from 'next/font/google';
+import { Roboto, Roboto_Mono } from 'next/font/google';
 import LenisProvider from '@/components/LenisProvider';
 import LogoLoader from '@/components/LogoLoader';
 import Navbar from '@/components/Navbar';
 import './globals.css';
 
-const fraunces = Fraunces({
+const roboto = Roboto({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-roboto',
   display: 'swap',
-  axes: ['opsz', 'SOFT'],
+  weight: ['300', '400', '500', '700', '900'],
   style: ['normal', 'italic'],
 });
 
-const manrope = Manrope({
+const robotoMono = Roboto_Mono({
   subsets: ['latin'],
-  variable: '--font-manrope',
-  display: 'swap',
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains',
+  variable: '--font-roboto-mono',
   display: 'swap',
   weight: ['400', '500'],
 });
@@ -60,16 +54,44 @@ export const metadata: Metadata = {
     description: 'A single aircraft. A crew of eleven. The horizon you choose.',
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: [
+      { url: '/xicon.ico', sizes: 'any' },
+      { url: '/xicon.ico', type: 'image/x-icon' },
+    ],
+    shortcut: '/xicon.ico',
+    apple: '/xicon.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${manrope.variable} ${jetbrains.variable}`}
+      className={`${roboto.variable} ${robotoMono.variable}`}
       suppressHydrationWarning
     >
-      <body>
+      <head>
+        <link rel="icon" href="/xicon.ico" sizes="any" />
+      </head>
+      <body className="antialiased">
+        {/* Protection Script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.addEventListener('contextmenu', (e) => e.preventDefault());
+              document.addEventListener('keydown', (e) => {
+                if (
+                  e.key === 'F12' ||
+                  (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                  (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S'))
+                ) {
+                  e.preventDefault();
+                }
+              });
+            `,
+          }}
+        />
         <LenisProvider>
           <LogoLoader />
           <Navbar />

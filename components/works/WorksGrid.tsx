@@ -207,7 +207,7 @@ function WorkCard({ work }: { work: WorkItem }) {
       className={cn(
         'group relative flex flex-col overflow-hidden bg-ink-900 ring-1 ring-[var(--line)]',
         'transition-[transform,box-shadow] duration-500 ease-soft will-change-transform',
-        'hover:shadow-[0_40px_80px_-30px_rgba(226,137,58,0.25)] hover:ring-ember-500/40',
+        'hover:shadow-[0_40px_80px_-30px_rgba(230,207,68,0.25)] hover:ring-ember-500/40',
         work.span === 'wide' && 'md:col-span-2',
       )}
       style={{

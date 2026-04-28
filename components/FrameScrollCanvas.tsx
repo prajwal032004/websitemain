@@ -216,7 +216,7 @@ export default function FrameScrollCanvas({
         )}
         style={{
           background:
-            'radial-gradient(60% 45% at 50% 55%, rgba(226,137,58,0.12) 0%, rgba(226,137,58,0.04) 45%, transparent 75%)',
+            'radial-gradient(60% 45% at 50% 55%, rgba(230,207,68,0.12) 0%, rgba(230,207,68,0.04) 45%, transparent 75%)',
         }}
       />
 

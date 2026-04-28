@@ -129,7 +129,7 @@ export default function Navbar() {
             <span
               aria-hidden
               className={cn(
-                'hidden h-1 w-1 shrink-0 rounded-full bg-ember-400 shadow-[0_0_6px_rgba(226,137,58,0.7)]',
+                'hidden h-1 w-1 shrink-0 rounded-full bg-ember-400 shadow-[0_0_6px_rgba(230,207,68,0.7)]',
                 'transition-opacity duration-300',
                 condensed ? 'md:block' : 'md:hidden',
               )}
@@ -177,7 +177,7 @@ export default function Navbar() {
                   {active && (
                     <span
                       aria-hidden
-                      className="absolute -bottom-0.5 left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-ember-400 shadow-[0_0_6px_rgba(226,137,58,0.9)]"
+                      className="absolute -bottom-0.5 left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-ember-400 shadow-[0_0_6px_rgba(230,207,68,0.9)]"
                     />
                   )}
                 </Link>
@@ -213,7 +213,7 @@ export default function Navbar() {
                 'text-[11px] font-medium uppercase tracking-[0.18em] text-bone-100/80',
                 'transition-[background,border-color,color,box-shadow] duration-300',
                 'hover:border-ember-400/60 hover:bg-ember-500/10 hover:text-bone-50',
-                'hover:shadow-[0_0_16px_rgba(226,137,58,0.12)]',
+                'hover:shadow-[0_0_16px_rgba(230,207,68,0.12)]',
                 'cursor-pointer',
               )}
             >
@@ -294,7 +294,7 @@ export default function Navbar() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(60% 40% at 50% 0%, rgba(226,137,58,0.10) 0%, transparent 60%)',
+              'radial-gradient(60% 40% at 50% 0%, rgba(230,207,68,0.10) 0%, transparent 60%)',
           }}
         />
 

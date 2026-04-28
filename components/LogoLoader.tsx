@@ -186,7 +186,7 @@ export default function LogoLoader() {
           className="absolute inset-0 opacity-25"
           style={{
             background:
-              'radial-gradient(ellipse at 30% 90%, rgba(226,137,58,0.35) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(184,120,40,0.20) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 30% 90%, rgba(230,207,68,0.35) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(184,170,40,0.20) 0%, transparent 50%)',
           }}
         />
       </div>
@@ -202,7 +202,7 @@ export default function LogoLoader() {
           className="absolute inset-0 opacity-25"
           style={{
             background:
-              'radial-gradient(ellipse at 70% 10%, rgba(226,137,58,0.25) 0%, transparent 55%)',
+              'radial-gradient(ellipse at 70% 10%, rgba(230,207,68,0.25) 0%, transparent 55%)',
           }}
         />
       </div>
@@ -234,7 +234,7 @@ export default function LogoLoader() {
             aria-hidden
             className="absolute inset-0 -z-10 rounded-full blur-3xl"
             style={{
-              background: 'radial-gradient(ellipse, rgba(226,137,58,0.20) 0%, transparent 70%)',
+              background: 'radial-gradient(ellipse, rgba(230,207,68,0.20) 0%, transparent 70%)',
               transform: 'scale(1.6)',
             }}
           />

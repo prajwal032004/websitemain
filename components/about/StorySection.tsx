@@ -117,7 +117,7 @@ export default function StorySection() {
                 {/* Dot */}
                 <span
                   aria-hidden
-                  className="absolute left-0 top-3 h-2 w-2 rounded-full bg-ember-500 shadow-[0_0_12px_2px_rgba(226,137,58,0.5)] md:left-[calc(12.5%-4px)]"
+                  className="absolute left-0 top-3 h-2 w-2 rounded-full bg-ember-500 shadow-[0_0_12px_2px_rgba(230,207,68,0.5)] md:left-[calc(12.5%-4px)]"
                 />
 
                 <div className="md:col-span-2 md:pl-16">

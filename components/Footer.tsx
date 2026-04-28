@@ -44,7 +44,7 @@ export default function Footer() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(60% 50% at 50% 0%, rgba(226,137,58,0.14) 0%, transparent 60%)',
+            'radial-gradient(60% 50% at 50% 0%, rgba(230,207,68,0.14) 0%, transparent 60%)',
         }}
       />
 

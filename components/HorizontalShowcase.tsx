@@ -297,7 +297,7 @@ function ServiceCard({ card }: { card: ShowcaseCard }) {
         'bg-ink-900 ring-1 ring-white/10',
         'shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)]',
         'transition-[box-shadow,ring-color] duration-500 ease-soft',
-        'hover:ring-ember-400/30 hover:shadow-[0_30px_80px_-20px_rgba(226,137,58,0.20)]',
+        'hover:ring-ember-400/30 hover:shadow-[0_30px_80px_-20px_rgba(230,207,68,0.20)]',
       )}
       style={{
         transform: 'perspective(1000px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg))',

@@ -129,7 +129,7 @@ function TeamCard({ member, index }: { member: Member; index: number }) {
           className="pointer-events-none absolute inset-0 mix-blend-overlay transition-opacity duration-700 ease-soft group-hover:opacity-40"
           style={{
             background:
-              'linear-gradient(135deg, rgba(226,137,58,0.55) 0%, rgba(142,74,20,0.35) 45%, rgba(10,8,7,0.6) 100%)',
+              'linear-gradient(135deg, rgba(230,207,68,0.55) 0%, rgba(138,123,22,0.35) 45%, rgba(10,8,7,0.6) 100%)',
           }}
         />
         {/* Shadow lift — deepens the corners without muddy flatness */}
