@@ -51,7 +51,7 @@ export default function WorksHero() {
   return (
     <section
       ref={ref}
-      className="relative isolate flex min-h-[100svh] flex-col justify-between overflow-hidden bg-ink-950 pt-32 md:pt-40"
+      className="relative isolate flex min-h-[100svh] flex-col justify-between overflow-hidden bg-ink-950 pt-24 md:pt-32"
     >
       <div
         aria-hidden
@@ -74,7 +74,8 @@ export default function WorksHero() {
 
         <h1
           data-works-parallax
-          className="mt-10 font-display text-[16vw] leading-[0.86] tracking-ultratight text-bone-100 md:mt-14 md:text-[13vw]"
+          className="mt-6 font-display leading-[0.86] tracking-ultratight text-bone-100 md:mt-10"
+          style={{ fontSize: 'clamp(3.5rem, min(14vw, 16svh), 12rem)' }}
         >
           <span className="block overflow-hidden">
             <span data-works-word className="block">
@@ -94,7 +95,7 @@ export default function WorksHero() {
         </h1>
       </div>
 
-      <div className="container-fluid relative z-10 pb-14 md:pb-20">
+      <div className="container-fluid relative z-10 pb-8 md:pb-12">
         <div className="grid gap-6 md:grid-cols-12 md:items-end">
           <p
             data-works-sub
@@ -112,7 +113,7 @@ export default function WorksHero() {
             <p className="font-mono text-[11px] uppercase tracking-superwide text-bone-400">
               Scroll
             </p>
-            <p className="mt-2 font-display text-2xl italic text-bone-100">
+            <p className="mt-1 font-display text-2xl italic text-bone-100">
               to the archive
             </p>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
+import { handleEmailClick } from '@/utils/email';
 
 /* ════════════════════════════════════════════════════════════════════════
    MERIDIAN — CINEMATIC FOOTER · v3
@@ -28,7 +29,7 @@ const FOOTER_CSS = `
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #06050a;
+  background: #0A0807;
   color: #f4efe6;
   display: flex;
   flex-direction: column;
@@ -50,8 +51,8 @@ const FOOTER_CSS = `
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 100% 70% at 50% 100%, #0a0810 0%, transparent 60%),
-    linear-gradient(180deg, #06050a 0%, #0a0810 50%, #050308 100%);
+    radial-gradient(ellipse 100% 70% at 50% 100%, #100C09 0%, transparent 60%),
+    linear-gradient(180deg, #0A0807 0%, #0E0B09 50%, #080605 100%);
 }
 
 /* Amber bloom — slower, subtler breathing */
@@ -88,7 +89,7 @@ const FOOTER_CSS = `
   right: -15%;
   width: 60%;
   height: 70%;
-  background: radial-gradient(circle, rgba(160, 110, 200, 0.07) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(180, 130, 70, 0.07) 0%, transparent 60%);
   filter: blur(110px);
   transform: translateZ(0);
   will-change: opacity;
@@ -569,11 +570,11 @@ const FOOTER_CSS = `
 }
 .mfx-marquee-block::before {
   left: 0;
-  background: linear-gradient(90deg, #06050a 30%, transparent);
+  background: linear-gradient(90deg, #0A0807 30%, transparent);
 }
 .mfx-marquee-block::after {
   right: 0;
-  background: linear-gradient(-90deg, #06050a 30%, transparent);
+  background: linear-gradient(-90deg, #0A0807 30%, transparent);
 }
 
 .mfx-marquee-row {
@@ -737,19 +738,6 @@ export default function Footer() {
   const baseRef = useRef<HTMLDivElement>(null);
 
   const [isMobile, setIsMobile] = useState(false);
-
-  /* Email handler */
-  const handleEmailClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-    if (mobile) {
-      window.location.href = `mailto:${EMAIL}`;
-    } else {
-      window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${EMAIL}`, '_blank');
-    }
-  }, []);
 
   /* Detect mobile */
   useEffect(() => {
@@ -1014,7 +1002,7 @@ export default function Footer() {
             <a
               ref={emailRef}
               href={`mailto:${EMAIL}`}
-              onClick={handleEmailClick}
+              onClick={(e) => handleEmailClick(e, EMAIL)}
               className="mfx-email"
               onMouseMove={(e) => magnetize(emailRef.current, e, 0.14)}
               onMouseLeave={() => demagnetize(emailRef.current)}
@@ -1072,6 +1060,8 @@ export default function Footer() {
             <a href="/privacy">Privacy</a>
             <span className="mfx-base-dot" />
             <a href="/terms">Terms</a>
+            <span className="mfx-base-dot" />
+            <a href="/security">Security</a>
           </span>
         </div>
       </footer>

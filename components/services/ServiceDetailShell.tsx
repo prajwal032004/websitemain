@@ -127,7 +127,7 @@ export default function ServiceDetailShell({ service }: Props) {
       {/* ── Hero image ──────────────────────────────────────────────── */}
       <div data-sd-img-wrap className="container-fluid pb-0">
         <div className="relative overflow-hidden rounded-2xl md:rounded-3xl">
-          <div className="relative aspect-[16/9] w-full overflow-hidden">
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-ink-900">
             <Image
               data-sd-img-inner
               src={service.thumb}
@@ -135,16 +135,26 @@ export default function ServiceDetailShell({ service }: Props) {
               fill
               priority
               sizes="(min-width: 768px) 90vw, 100vw"
-              className="scale-[1.1] object-cover"
+              className="scale-[1.1] object-cover grayscale-[0.2]"
+            />
+            {/* Cinematic Video Overlay */}
+            <video
+              src="/videos/desktop.mp4"
+              muted
+              playsInline
+              loop
+              autoPlay
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover mix-blend-screen opacity-40 md:opacity-60"
+              aria-hidden
             />
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/60 via-transparent to-ink-950/30"
+              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/80 via-transparent to-ink-950/20"
             />
             {/* Index watermark */}
             <span
               aria-hidden
-              className="pointer-events-none absolute bottom-4 right-6 font-display text-[8rem] italic leading-none text-ember-400/15 md:text-[12rem]"
+              className="pointer-events-none absolute bottom-4 right-6 font-display text-[8rem] italic leading-none text-ember-400/25 md:text-[12rem] mix-blend-overlay"
             >
               {service.index}
             </span>

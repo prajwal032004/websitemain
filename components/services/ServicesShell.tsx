@@ -8,6 +8,7 @@ import { useGsap } from '@/hooks/useGsap';
 import { useLoaderComplete } from '@/hooks/useLoaderComplete';
 import { framePath } from '@/utils/frames';
 import { cn } from '@/utils/cn';
+import { handleEmailClick } from '@/utils/email';
 
 type Service = {
   id: string;
@@ -111,6 +112,8 @@ const SERVICES: Service[] = [
   },
 ];
 
+import { SERVICES_DATA } from '@/lib/services-data';
+
 export default function ServicesShell() {
   const ref = useRef<HTMLDivElement | null>(null);
   const active = useLoaderComplete();
@@ -127,19 +130,11 @@ export default function ServicesShell() {
       y: 16, opacity: 0, duration: 0.9, stagger: 0.08, ease: 'power3.out', delay: 0.35,
     });
 
-    // Service cards
-    gsap.utils.toArray<HTMLElement>('[data-sv-card]').forEach((el) => {
-      gsap.fromTo(el, { y: 60, opacity: 0 }, {
-        y: 0, opacity: 1, duration: 1.1, ease: 'expo.out',
-        scrollTrigger: { trigger: el, start: 'top 80%', once: true },
-      });
-    });
-
-    // Image parallax
-    gsap.utils.toArray<HTMLElement>('[data-sv-img]').forEach((el) => {
-      gsap.to(el, {
-        yPercent: -12, ease: 'none',
-        scrollTrigger: { trigger: el.parentElement, start: 'top bottom', end: 'bottom top', scrub: 0.8 },
+    // Bento Cards Entrance
+    gsap.utils.toArray<HTMLElement>('[data-sv-bento]').forEach((el, i) => {
+      gsap.fromTo(el, { y: 100, opacity: 0, scale: 0.95 }, {
+        y: 0, opacity: 1, scale: 1, duration: 1.2, ease: 'expo.out',
+        scrollTrigger: { trigger: el, start: 'top 85%', once: true },
       });
     });
 
@@ -153,16 +148,16 @@ export default function ServicesShell() {
   }, [active], ref);
 
   return (
-    <div ref={ref} className="bg-ink-950 text-bone-100">
+    <div ref={ref} className="bg-ink-950 text-bone-100 pb-20">
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative flex min-h-[80svh] flex-col justify-between overflow-hidden pt-32 pb-16 md:pt-44 md:pb-20">
+      <div className="relative flex min-h-[75svh] flex-col justify-between overflow-hidden pt-24 pb-12 md:pt-32 md:pb-16">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{ background: 'radial-gradient(70% 50% at 50% 0%, rgba(230,207,68,0.14) 0%, transparent 60%)' }}
         />
         <div className="container-fluid relative">
-          <p data-sv-meta className="eyebrow mb-8">§ Services — What we offer</p>
+          <p data-sv-meta className="eyebrow mb-6">§ Services — What we offer</p>
           <h1 className="font-display text-[14vw] leading-[0.86] tracking-ultratight md:text-[9vw]">
             {['Five', 'disciplines.'].map((w, i) => (
               <span key={i} className="block overflow-hidden">
@@ -174,34 +169,48 @@ export default function ServicesShell() {
             </span>
           </h1>
         </div>
-        <div className="container-fluid relative grid gap-8 md:grid-cols-12 md:items-end">
+        <div className="container-fluid relative mt-12 grid gap-8 md:grid-cols-12 md:items-end">
           <p data-sv-meta className="max-w-lg text-base leading-relaxed text-bone-200/80 md:col-span-5 md:text-lg">
             We do not offer a rate card. We offer a team of eleven people who have handled every version of &ldquo;impossible&rdquo; since 2013. Pick a discipline below, or tell us what you need and we will build the solution.
           </p>
           <div data-sv-meta className="flex gap-3 md:col-span-4 md:col-start-9 md:flex-col md:items-end">
-            {['Charter', 'Expeditions', 'Cargo', 'Concierge', 'Access'].map((s, i) => (
-              <a key={s} href={'#' + s.toLowerCase()} className="font-mono text-[10px] uppercase tracking-superwide text-bone-400 transition-colors hover:text-ember-400">
-                {String(i + 1).padStart(2, '0')} {s}
+            {SERVICES_DATA.map((s, i) => (
+              <a key={s.slug} href={'#' + s.slug} className="font-mono text-[10px] uppercase tracking-superwide text-bone-400 transition-colors hover:text-ember-400">
+                {s.index} {s.title}
               </a>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Service sections ─────────────────────────────────────── */}
-      <div className="space-y-0">
-        {SERVICES.map((sv) => (
-          <ServiceSection key={sv.id} service={sv} />
-        ))}
+      {/* ── Bento Grid ────────────────────────────────────────────── */}
+      <div className="container-fluid py-12 md:py-20">
+        <div className="grid gap-4 md:grid-cols-12 md:gap-6">
+          {SERVICES_DATA.map((service, idx) => {
+            // Masonry layout assignment
+            let colSpan = 'md:col-span-12 lg:col-span-6'; // Default
+            if (idx === 0) colSpan = 'md:col-span-12 lg:col-span-7';
+            if (idx === 1) colSpan = 'md:col-span-12 lg:col-span-5';
+            if (idx === 2) colSpan = 'md:col-span-12 lg:col-span-5';
+            if (idx === 3) colSpan = 'md:col-span-12 lg:col-span-7';
+            if (idx === 4) colSpan = 'md:col-span-12 lg:col-span-12'; // Full width for Access
+
+            return (
+              <div key={service.slug} data-sv-bento className={cn(colSpan, "h-[500px] md:h-[600px] lg:h-[700px]")}>
+                <BentoCard service={service} fullWidth={idx === 4} />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Brief CTA ────────────────────────────────────────────── */}
-      <div className="container-fluid py-32 md:py-44">
+      <div className="container-fluid py-24 md:py-32">
         <div data-sv-line className="mb-16 h-px w-full bg-[var(--line)]" />
         <div className="grid gap-16 md:grid-cols-12 md:gap-10">
           <div className="md:col-span-6">
             <p className="eyebrow mb-6">Start the conversation</p>
-            <h2 className="font-display text-6xl italic leading-[0.92] md:text-7xl">
+            <h2 className="font-display text-5xl italic leading-[0.92] md:text-7xl">
               Tell us <span className="text-ember-400">where.</span> <br />
               We&apos;ll handle <span className="text-bone-300">everything else.</span>
             </h2>
@@ -214,9 +223,9 @@ export default function ServicesShell() {
               <a href="/#contact" className="inline-flex items-center justify-center gap-3 rounded-full bg-ember-500 px-7 py-4 text-[11px] uppercase tracking-[0.28em] text-ink-950 transition-[background] duration-300 hover:bg-ember-400">
                 Open a brief
               </a>
-              <a href="mailto:desk@meridian.aero" className="glass inline-flex items-center justify-center gap-3 rounded-full border-white/15 bg-white/[0.04] px-7 py-4 text-[11px] uppercase tracking-[0.28em] text-bone-100 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10">
+              <button onClick={(e) => handleEmailClick(e, 'desk@meridian.aero')} className="glass inline-flex items-center justify-center gap-3 rounded-full border-white/15 bg-white/[0.04] px-7 py-4 text-[11px] uppercase tracking-[0.28em] text-bone-100 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10 cursor-pointer">
                 desk@meridian.aero
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -225,76 +234,141 @@ export default function ServicesShell() {
   );
 }
 
-function ServiceSection({ service }: { service: Service }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// BentoCard
+// ─────────────────────────────────────────────────────────────────────────────
+import { useState, useCallback } from 'react';
+import Link from 'next/link';
+
+function BentoCard({ service, fullWidth }: { service: any, fullWidth: boolean }) {
+  const cardRef = useRef<HTMLAnchorElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+
+  const enter = useCallback(() => {
+    setHovered(true);
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.play().catch(() => undefined);
+  }, []);
+
+  const leave = useCallback(() => {
+    setHovered(false);
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  }, []);
+
   return (
-    <section
-      id={service.id}
-      data-sv-card
-      className="border-t border-[var(--line)] py-24 md:py-36"
+    <Link
+      ref={cardRef}
+      id={service.slug}
+      href={`/services/${service.slug}`}
+      data-cursor={service.title}
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      className={cn(
+        'group relative flex h-full w-full flex-col overflow-hidden',
+        'rounded-2xl md:rounded-3xl',
+        'bg-ink-900 ring-1 ring-white/10',
+        'transition-[box-shadow,ring-color] duration-500 ease-soft',
+        'hover:ring-ember-400/40 hover:shadow-[0_0_80px_-20px_rgba(230,207,68,0.25)]',
+      )}
     >
-      <div className="container-fluid">
-        <div className={cn('grid gap-12 md:grid-cols-12 md:gap-16 md:items-center', service.flip && 'md:[&>*:first-child]:order-2')}>
-          {/* Image */}
-          <div className="relative overflow-hidden rounded-2xl md:col-span-5 md:rounded-3xl">
-            <div className="relative aspect-[4/5] w-full overflow-hidden">
-              <Image
-                data-sv-img
-                src={service.thumb}
-                alt={service.title}
-                fill
-                sizes="(min-width: 768px) 42vw, 100vw"
-                className="scale-[1.1] object-cover"
-              />
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/70 via-transparent to-ink-950/30 mix-blend-multiply"
-              />
-              {/* Index watermark */}
-              <span aria-hidden className="pointer-events-none absolute bottom-4 right-4 font-display text-8xl italic leading-none text-ember-400/20 md:text-9xl">
-                {service.index}
-              </span>
-            </div>
+      {/* ── Image & Video Background ── */}
+      <div className="absolute inset-0 z-0 bg-ink-950">
+        <Image
+          src={service.thumb}
+          alt={service.title}
+          fill
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className={cn(
+            'object-cover transition-[transform,filter,opacity] duration-[1200ms] ease-out',
+            'grayscale-[0.4]',
+            hovered ? 'scale-105 opacity-0' : 'scale-100 opacity-100'
+          )}
+        />
+        
+        {/* Cinematic Video Hover Reveal */}
+        <video
+          ref={videoRef}
+          src="/videos/desktop.mp4"
+          muted
+          playsInline
+          loop
+          preload="none"
+          onCanPlay={() => setVideoReady(true)}
+          className={cn(
+            'pointer-events-none absolute inset-0 h-full w-full object-cover',
+            'transition-[opacity,transform] duration-700 ease-out',
+            hovered && videoReady ? 'scale-105 opacity-100' : 'scale-110 opacity-0'
+          )}
+          aria-hidden
+        />
+
+        {/* Dynamic Dark Gradient */}
+        <div
+          className={cn(
+            'absolute inset-0 transition-opacity duration-700',
+            hovered ? 'bg-ink-950/40' : 'bg-gradient-to-t from-ink-950 via-ink-950/40 to-transparent'
+          )}
+        />
+      </div>
+
+      {/* ── Content Foreground ── */}
+      <div className="relative z-10 flex h-full flex-col justify-between p-6 md:p-10">
+        
+        {/* Top Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-superwide text-bone-100/90">
+            <span className={cn('transition-colors duration-300', hovered && 'text-ember-400')}>{service.index}</span>
+            <span className="h-px w-6 bg-bone-100/30" />
+            <span className="glass rounded-full border-white/15 bg-white/[0.08] px-3 py-1.5 backdrop-blur-md">
+              {service.title}
+            </span>
           </div>
+          
+          {/* Arrow Icon */}
+          <span className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full glass border border-white/15 bg-white/[0.05]",
+            "transition-all duration-500 ease-out",
+            hovered && "bg-ember-500/20 border-ember-400 -rotate-45 scale-110"
+          )}>
+            <svg viewBox="0 0 14 14" className="h-3.5 w-3.5 text-bone-100" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <path d="M2 7h9M7 3l4 4-4 4" />
+            </svg>
+          </span>
+        </div>
 
-          {/* Content */}
-          <div className={cn('flex flex-col gap-8 md:col-span-6', service.flip ? 'md:col-start-1' : 'md:col-start-7')}>
-            <div>
-              <p className="eyebrow mb-4">{service.index} / {service.title}</p>
-              <h2 className="font-display text-5xl italic leading-[0.92] md:text-6xl">
-                {service.tagline.split(' ').slice(0, -1).join(' ')}{' '}
-                <span className="text-ember-400">{service.tagline.split(' ').slice(-1)}</span>
-              </h2>
+        {/* Bottom Text */}
+        <div className="mt-auto max-w-2xl">
+          <h3 className={cn(
+            "font-display italic leading-[0.95] text-bone-100 transition-transform duration-500",
+            fullWidth ? "text-5xl md:text-7xl" : "text-4xl md:text-6xl",
+            hovered && "translate-x-2"
+          )}>
+            {service.tagline.split('. ').map((part: string, i: number, arr: string[]) => (
+              <span key={i} className={i === arr.length - 1 && arr.length > 1 ? "text-ember-400" : ""}>
+                {part}{i !== arr.length - 1 ? '. ' : ''}
+              </span>
+            ))}
+          </h3>
+          
+          <div className={cn(
+            "mt-6 grid transition-all duration-500 ease-out",
+            hovered ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          )}>
+            <div className="overflow-hidden">
+              <p className="text-sm leading-relaxed text-bone-200/90 md:text-base md:w-3/4">
+                {service.description}
+              </p>
             </div>
-
-            <div data-sv-line className="h-px w-full bg-[var(--line)]" />
-
-            <p className="text-base leading-relaxed text-bone-200/85 md:text-lg">
-              {service.description}
-            </p>
-
-            <ul className="space-y-3">
-              {service.features.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-sm text-bone-200/80">
-                  <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ember-400" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <p className="font-mono text-[10px] uppercase tracking-superwide text-bone-400">
-              {service.note}
-            </p>
-
-            <a
-              href="/#contact"
-              className="group inline-flex w-fit items-center gap-3 rounded-full border border-[var(--line)] px-6 py-3 text-sm text-bone-100 transition-[background,border-color] duration-300 hover:border-ember-400 hover:bg-ember-500/10"
-            >
-              <span className="font-mono text-[10px] uppercase tracking-superwide">Enquire about {service.title}</span>
-              <svg viewBox="0 0 14 14" className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2 7h9M7 3l4 4-4 4" /></svg>
-            </a>
           </div>
         </div>
       </div>
-    </section>
+    </Link>
   );
 }

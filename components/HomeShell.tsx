@@ -52,21 +52,36 @@ const Footer = dynamic(
   { ssr: false },
 );
 
+import SectionFade from '@/components/SectionFade';
+
 export default function HomeShell() {
   return (
     // `relative` only — no z-index, no overflow-hidden, no isolation.
     // Sections flow in document order. GSAP pinSpacers push sections down
     // correctly because nothing interrupts the natural stacking context.
-    <main className="relative">
+    <main className="relative bg-ink-950">
       <FrameScrollCanvas />
-      <HeroVideos />
-      <IntroSection />
-      <DesertWindSection />
-      <StatsSection />
+      
+      {/* Smooth gradient fade bridging the canvas and the content below */}
+      <div 
+        aria-hidden 
+        className="pointer-events-none relative z-50 h-48 w-full bg-gradient-to-t from-ink-950 to-transparent -mt-48" 
+      />
 
+      <HeroVideos />
+      <SectionFade />
+      <IntroSection />
+      <SectionFade />
+      <DesertWindSection />
+      <SectionFade />
+      <StatsSection />
+      <SectionFade />
       <HorizontalShowcase />
+      <SectionFade />
       <FeaturesSection />
+      <SectionFade />
       <DestinationsMarquee />
+      <SectionFade />
       <Footer />
     </main>
   );

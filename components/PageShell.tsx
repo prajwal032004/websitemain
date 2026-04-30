@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import Loader from '@/components/Loader';
 import Navbar from '@/components/Navbar';
 import HeroVideos from '@/components/HeroVideos';
+import SectionFade from '@/components/SectionFade';
 
 // Heavy interactive components are split into their own chunks.
 const FrameScrollCanvas = dynamic(
@@ -51,7 +52,7 @@ export default function PageShell() {
 
       <Navbar />
 
-      <main className="relative">
+      <main className="relative bg-ink-950">
         <HeroVideos />
         <FrameScrollCanvas
           onProgress={handleProgress}
@@ -62,6 +63,7 @@ export default function PageShell() {
         <StatsSection />
         <FeaturesSection />
         <DestinationsMarquee />
+        <SectionFade />
         <Footer />
       </main>
     </>

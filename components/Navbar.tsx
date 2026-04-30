@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { useLoaderComplete } from '@/hooks/useLoaderComplete';
+import { handleEmailClick } from '@/utils/email';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -20,31 +21,29 @@ export default function Navbar() {
   const [hidden, setHidden] = useState(false);
   const [condensed, setCondensed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [navRevealed, setNavRevealed] = useState(false);
+  const [navRevealed, setNavRevealed] = useState(loaderDone);
   const lastYRef = useRef(0);
 
-  // After the loader finishes, trigger navbar reveal with a short delay
-  // so the logo FLIP animation has time to complete
+  // Watch for the GSAP FLIP completion signal, or immediate reveal if already loaded
   useEffect(() => {
-    if (!loaderDone) return;
-    const timer = setTimeout(() => setNavRevealed(true), 150);
-    return () => clearTimeout(timer);
-  }, [loaderDone]);
-
-  const handleEmailClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-    if (isMobile) {
-      window.location.href = 'mailto:business@synkyn.co';
-    } else {
-      window.open(
-        'https://mail.google.com/mail/?view=cm&fs=1&to=business@synkyn.co',
-        '_blank'
-      );
+    if (loaderDone || document.documentElement.hasAttribute('data-nav-logo-ready')) {
+      setNavRevealed(true);
+      return;
     }
-  }, []);
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.attributeName === 'data-nav-logo-ready') {
+          if (document.documentElement.hasAttribute('data-nav-logo-ready')) {
+            setNavRevealed(true);
+          }
+        }
+      }
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, [loaderDone]);
 
   useEffect(() => {
     let frame = 0;
@@ -111,10 +110,9 @@ export default function Navbar() {
               data-nav-logo
               className={cn(
                 'inline-flex items-center leading-none',
-                'transition-[opacity,transform] duration-700 ease-out',
                 navRevealed
-                  ? 'opacity-100 translate-y-0 group-hover:opacity-80'
-                  : 'opacity-0 translate-y-2',
+                  ? 'opacity-100 group-hover:opacity-80 transition-opacity duration-300'
+                  : 'opacity-0', // No translate-y transform here, otherwise GSAP FLIP calculation is wrong!
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -206,7 +204,7 @@ export default function Navbar() {
             />
 
             <button
-              onClick={handleEmailClick}
+              onClick={(e) => handleEmailClick(e, 'desk@meridian.aero')}
               className={cn(
                 'group hidden items-center gap-1.5 rounded-full md:inline-flex',
                 'border border-bone-100/20 px-3.5 py-1.5',
@@ -346,7 +344,7 @@ export default function Navbar() {
             }}
           >
             <button
-              onClick={(e) => { close(); handleEmailClick(e); }}
+              onClick={(e) => { close(); handleEmailClick(e, 'desk@meridian.aero'); }}
               className={cn(
                 'flex items-center justify-center gap-2 rounded-full',
                 'bg-ember-500 px-6 py-3.5',
@@ -370,7 +368,7 @@ export default function Navbar() {
               </svg>
             </button>
             <p className="text-center font-mono text-[10px] uppercase tracking-superwide text-bone-400">
-              business@.co
+              desk@meridian.aero
             </p>
           </div>
         </nav>

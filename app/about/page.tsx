@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import AboutHero from '@/components/about/AboutHero';
+import SectionFade from '@/components/SectionFade';
 
 const StorySection = dynamic(() => import('@/components/about/StorySection'), { ssr: false });
 const TeamGrid = dynamic(() => import('@/components/about/TeamGrid'), { ssr: false });
@@ -14,11 +15,12 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="relative">
+    <main className="relative bg-ink-950">
       <AboutHero />
       <StorySection />
       <TeamGrid />
       <VisionSection />
+      <SectionFade />
       <Footer />
     </main>
   );

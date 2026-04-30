@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import WorksHero from '@/components/works/WorksHero';
+import SectionFade from '@/components/SectionFade';
 
 const WorksGrid = dynamic(() => import('@/components/works/WorksGrid'), {
   ssr: false,
@@ -16,9 +17,10 @@ export const metadata: Metadata = {
 
 export default function WorksPage() {
   return (
-    <main className="relative">
+    <main className="relative bg-ink-950">
       <WorksHero />
       <WorksGrid />
+      <SectionFade />
       <Footer />
     </main>
   );

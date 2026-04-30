@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { SERVICES_DATA, getService } from '@/lib/services-data';
 import ServiceDetailShell from '@/components/services/ServiceDetailShell';
+import SectionFade from '@/components/SectionFade';
 
 const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 
@@ -37,8 +38,9 @@ export default function ServiceDetailPage({
   if (!service) notFound();
 
   return (
-    <main className="relative">
+    <main className="relative bg-ink-950">
       <ServiceDetailShell service={service} />
+      <SectionFade />
       <Footer />
     </main>
   );

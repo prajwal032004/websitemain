@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import EmailLink from '@/components/EmailLink';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -171,9 +172,9 @@ export default function PrivacyPage() {
           <div className="md:col-span-7 md:col-start-6 space-y-6">
             <p className="text-sm leading-relaxed text-bone-400">
               Privacy enquiries:{' '}
-              <a href="mailto:privacy@meridian.aero" className="text-bone-100 hover:text-ember-400 transition-colors">
+              <EmailLink email="privacy@meridian.aero" className="text-bone-100 hover:text-ember-400 transition-colors">
                 privacy@meridian.aero
-              </a>
+              </EmailLink>
               {' '}— we respond in plain language, within thirty days.
             </p>
             <div className="flex flex-wrap gap-6 pt-4 border-t border-[var(--line)]">

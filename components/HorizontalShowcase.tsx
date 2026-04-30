@@ -305,16 +305,16 @@ function ServiceCard({ card }: { card: ShowcaseCard }) {
       }}
     >
       {/* ── Image + video ─────────────────────────────────────────── */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden bg-ink-950">
         <Image
           src={card.thumb}
           alt={card.service}
           fill
           sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 25vw, (min-width: 768px) 25vw, 78vw"
           className={cn(
-            'object-cover transition-[filter,transform] duration-700 ease-soft',
+            'object-cover transition-[transform,filter,opacity] duration-700 ease-soft',
             'grayscale-[0.3]',
-            hovered ? 'scale-[1.05] grayscale-0' : 'scale-100',
+            hovered ? 'scale-[1.05] opacity-0' : 'scale-100 opacity-100',
           )}
           priority={card.index === '01'}
         />
@@ -330,8 +330,8 @@ function ServiceCard({ card }: { card: ShowcaseCard }) {
           onCanPlay={() => setVideoReady(true)}
           className={cn(
             'pointer-events-none absolute inset-0 h-full w-full object-cover',
-            'transition-opacity duration-500 ease-soft',
-            hovered && videoReady ? 'opacity-100' : 'opacity-0',
+            'transition-[opacity,transform] duration-500 ease-soft',
+            hovered && videoReady ? 'scale-[1.05] opacity-100' : 'scale-110 opacity-0',
           )}
           aria-hidden
         />
@@ -339,7 +339,10 @@ function ServiceCard({ card }: { card: ShowcaseCard }) {
         {/* Gradient veil */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/30 to-ink-900/40"
+          className={cn(
+            'pointer-events-none absolute inset-0 transition-opacity duration-500',
+            hovered ? 'bg-ink-950/40' : 'bg-gradient-to-t from-ink-900 via-ink-900/30 to-ink-900/40'
+          )}
         />
 
         {/* Hover ember shimmer at top */}

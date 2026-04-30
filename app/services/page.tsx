@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import ServicesShell from '@/components/services/ServicesShell';
+import SectionFade from '@/components/SectionFade';
 
 export const metadata: Metadata = {
   title: 'Services',
@@ -12,8 +13,9 @@ const Footer = dynamic(() => import('@/components/Footer'), { ssr: false });
 
 export default function ServicesPage() {
   return (
-    <main className="relative">
+    <main className="relative bg-ink-950">
       <ServicesShell />
+      <SectionFade />
       <Footer />
     </main>
   );

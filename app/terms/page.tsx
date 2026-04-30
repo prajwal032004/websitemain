@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import EmailLink from '@/components/EmailLink';
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
@@ -132,9 +133,9 @@ export default function TermsPage() {
           <div className="md:col-span-7 md:col-start-6 space-y-6">
             <p className="text-sm leading-relaxed text-bone-400">
               For questions regarding these terms, contact our legal desk at{' '}
-              <a href="mailto:legal@meridian.aero" className="text-bone-100 hover:text-ember-400 transition-colors">
+              <EmailLink email="legal@meridian.aero" className="text-bone-100 hover:text-ember-400 transition-colors">
                 legal@meridian.aero
-              </a>.
+              </EmailLink>.
             </p>
             <div className="flex flex-wrap gap-6 pt-4 border-t border-[var(--line)]">
               <Link href="/privacy" className="eyebrow hover:text-bone-100 transition-colors">

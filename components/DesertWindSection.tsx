@@ -237,11 +237,11 @@ export default function DesertWindSection() {
               that hangs in the air long after the hands have left the keys.
             </p>
             <div data-dw-line className="my-6 h-px w-full origin-left bg-[var(--line)] md:my-8" />
-            <div data-dw-stat-bob className="glass inline-flex items-stretch divide-x divide-[var(--line)] rounded-2xl border-white/15 bg-white/[0.04]">
+            <div data-dw-stat-bob className="glass flex w-full items-stretch divide-x divide-[var(--line)] rounded-xl border-white/15 bg-white/[0.04] sm:inline-flex sm:w-auto sm:rounded-2xl">
               {[{ value: '03', label: 'Featured' }, { value: '∞', label: 'Perspectives' }, { value: '1/125', label: 'Shutter' }].map((s) => (
-                <div key={s.label} className="flex flex-col gap-1 px-5 py-4">
-                  <span className="font-display text-2xl italic text-bone-100">{s.value}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-superwide text-bone-400">{s.label}</span>
+                <div key={s.label} className="flex flex-1 flex-col items-center gap-0.5 px-3 py-3 sm:flex-initial sm:items-start sm:gap-1 sm:px-5 sm:py-4">
+                  <span className="font-display text-lg italic text-bone-100 sm:text-2xl">{s.value}</span>
+                  <span className="font-mono text-[8px] uppercase tracking-widest text-bone-400 sm:text-[10px] sm:tracking-superwide">{s.label}</span>
                 </div>
               ))}
             </div>

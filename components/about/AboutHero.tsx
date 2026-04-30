@@ -33,7 +33,7 @@ export default function AboutHero() {
   return (
     <section
       ref={ref}
-      className="relative flex min-h-[90svh] flex-col justify-between overflow-hidden bg-ink-950 pb-20 pt-32 md:pt-44"
+      className="relative flex min-h-[90svh] flex-col justify-between overflow-hidden bg-ink-950 pb-10 pt-24 md:pb-16 md:pt-32"
     >
       <div className="container-fluid relative">
         <div className="flex items-end justify-between">
@@ -45,7 +45,10 @@ export default function AboutHero() {
           </p>
         </div>
 
-        <h1 className="mt-14 max-w-[16ch] font-display text-[13vw] leading-[0.88] tracking-ultratight text-bone-100 md:text-[8vw]">
+        <h1 
+          className="mt-8 font-display leading-[0.88] tracking-ultratight text-bone-100 md:mt-10"
+          style={{ fontSize: 'clamp(3rem, min(12vw, 15svh), 10rem)' }}
+        >
           <span className="block overflow-hidden">
             <span data-about-word className="block">
               We fly for those
@@ -64,7 +67,7 @@ export default function AboutHero() {
         </h1>
       </div>
 
-      <div className="container-fluid mt-20 grid gap-10 md:grid-cols-12 md:items-end">
+      <div className="container-fluid mt-12 grid gap-8 md:mt-16 md:grid-cols-12 md:items-end">
         <p
           data-about-sub
           className="max-w-lg text-base leading-relaxed text-bone-200/80 md:col-span-5 md:text-lg"
@@ -84,7 +87,7 @@ export default function AboutHero() {
           ].map(([n, l]) => (
             <div key={l}>
               <dt className="eyebrow">{l}</dt>
-              <dd className="mt-2 font-display text-3xl italic leading-none text-bone-100 md:text-4xl">
+              <dd className="mt-1 font-display text-2xl italic leading-none text-bone-100 md:text-4xl">
                 {n}
               </dd>
             </div>

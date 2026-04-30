@@ -10,7 +10,7 @@ const DESTINATIONS = [
 
 export default function DestinationsMarquee() {
   return (
-    <section className="relative overflow-hidden border-y border-[var(--line)] bg-ink-900 py-16 md:py-24">
+    <section className="relative overflow-hidden bg-ink-900 py-16 md:py-24">
       <div className="container-fluid mb-10 flex items-end justify-between">
         <p className="eyebrow">§ 05 — Reach</p>
         <p className="eyebrow hidden md:block">174 sovereignties, one flight plan</p>
