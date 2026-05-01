@@ -248,7 +248,6 @@ export default function FrameScrollCanvas({
         )}
         style={{
           imageRendering: 'high-quality',
-          willChange: 'contents',
         } as unknown as React.CSSProperties}
       />
 
