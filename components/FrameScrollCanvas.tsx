@@ -120,10 +120,24 @@ export default function FrameScrollCanvas({
         stateRef.current.lastDrawn = i;
       };
 
+      // Ensure veil resets inline style on resize to mobile
+      const handleVeilResize = () => {
+        const veilEl = document.querySelector<HTMLElement>('[data-fs-bottom-veil]');
+        if (veilEl) {
+          const isMob = !window.matchMedia('(min-width: 768px)').matches;
+          if (isMob) veilEl.style.opacity = '';
+        }
+      };
+
+      const handleResize = () => {
+        resizeCanvas();
+        handleVeilResize();
+      };
+
       resizeCanvas();
       drawFrame(0);
 
-      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('resize', handleResize);
 
       const enter = gsap.fromTo(
         canvas,
@@ -182,14 +196,19 @@ export default function FrameScrollCanvas({
           scrub: true,
           invalidateOnRefresh: true,
           onUpdate: (self) => {
-            const eased = self.progress * self.progress * (3 - 2 * self.progress);
-            veil.style.opacity = String(eased);
+            const isMob = !window.matchMedia('(min-width: 768px)').matches;
+            if (isMob) {
+              veil.style.opacity = '';
+            } else {
+              const eased = self.progress * self.progress * (3 - 2 * self.progress);
+              veil.style.opacity = String(eased);
+            }
           },
         })
         : null;
 
       return () => {
-        window.removeEventListener('resize', resizeCanvas);
+        window.removeEventListener('resize', handleResize);
         enter.kill();
         trigger.kill();
         meterTrigger.kill();
@@ -233,14 +252,13 @@ export default function FrameScrollCanvas({
         } as unknown as React.CSSProperties}
       />
 
-      {/* Bottom veil — fades in at end of sequence */}
+      {/* Bottom veil — fades in at end of sequence (always visible on mobile) */}
       <div
         data-fs-bottom-veil
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 opacity-100 md:opacity-0"
         style={{
           height: 'clamp(120px, 22svh, 220px)',
-          opacity: 0,
           background: 'linear-gradient(to top, #0A0807 0%, transparent 100%)',
         }}
       />
